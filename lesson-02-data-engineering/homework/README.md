@@ -1,106 +1,146 @@
-# Lesson 2: Data Engineering for AI — Ingestion Pipeline
+# Lesson 2: Data Engineering for AI — Homework
 
-## What you'll build
+## Що потрібно зробити
 
-A document ingestion pipeline that:
+Ви маєте готовий ingestion pipeline, який парсить документи (PDF, DOCX, HTML, XLSX), розбиває на чанки та зберігає з версіонуванням. Ваше завдання — запустити його, зрозуміти як він працює, та пройти всі кроки нижче.
 
-1. **Parses PDF, DOCX, HTML** documents and extracts text + metadata
-2. **Applies OCR** when scanned/image-based PDFs are detected
-3. **Streams documents** through a queue with configurable batching
-4. **Versions** every data snapshot so you can reproduce any past state
+---
 
-## Architecture
-
-```
-samples/          Raw files (PDF, DOCX, HTML)
-   |
-   v
-[FileWatcher] ── detects new files
-   |
-   v
-[Queue] ── async queue with configurable batch size
-   |
-   v
-[Parser Router] ── picks parser by file type
-   |    |    |
-  PDF  DOCX  HTML
-   |    |    |
-   v    v    v
-[OCR?] ── falls back to OCR if text extraction yields nothing
-   |
-   v
-[Chunker] ── splits text into chunks for AI consumption
-   |
-   v
-[Versioned Store] ── saves processed data with version metadata
-```
-
-## Setup
+## Крок 1: Налаштування середовища
 
 ```bash
-# Create virtual environment
+cd homework/
+
 python -m venv .venv
 source .venv/bin/activate  # macOS/Linux
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-## Quick Start
+---
+
+## Крок 2: Згенерувати тестові документи
 
 ```bash
-# 1. Generate sample documents to work with
 python src/generate_samples.py
+```
 
-# 2. Run the full pipeline on sample documents
+Це створить файли у папці `samples/` — PDF, DOCX, HTML для тестування.
+
+---
+
+## Крок 3: Запустити pipeline у звичайному режимі
+
+```bash
 python src/main.py
+```
 
-# 3. Run with streaming mode (file watcher + queue)
+Подивіться на вивід — скільки документів оброблено, скільки чанків створено. Результати зберігаються у `data/processed/`.
+
+---
+
+## Крок 4: Запустити pipeline у resilient режимі
+
+Спочатку згенеруйте "погані" документи:
+
+```bash
+python src/generate_bad_samples.py
+```
+
+Потім запустіть pipeline з валідацією та quarantine:
+
+```bash
+python src/main.py --input samples/enterprise_challenges --resilient
+```
+
+Перевірте що потрапило у карантин:
+
+```bash
+ls data/quarantine/
+```
+
+---
+
+## Крок 5: Streaming режим (file watcher)
+
+```bash
 python src/main.py --watch
+```
 
-# 4. Check data versions
-python src/versioning/version_store.py --list
+Pipeline буде слідкувати за папкою `samples/` — спробуйте скопіювати туди новий файл і побачити як він автоматично обробляється.
 
-# 5. Run tests
+---
+
+## Крок 6: Запустити тести
+
+```bash
 pytest tests/ -v
 ```
 
-## Project Structure
+Всі тести повинні проходити.
 
-```
-src/
-  main.py                  — Entry point, orchestrates the pipeline
-  generate_samples.py      — Creates sample PDF/DOCX/HTML files
-  parsers/
-    base.py                — Base parser interface
-    pdf_parser.py          — PDF text extraction + OCR fallback
-    docx_parser.py         — DOCX parsing
-    html_parser.py         — HTML parsing with tag stripping
-    router.py              — Routes files to correct parser
-  streaming/
-    queue.py               — Async document queue
-    batcher.py             — Batching logic (size / time window)
-    watcher.py             — File system watcher for new documents
-  ingestion/
-    chunker.py             — Text chunking strategies
-    pipeline.py            — Connects all stages together
-  versioning/
-    version_store.py       — Data versioning with hash-based snapshots
-configs/
-  pipeline.yaml            — Pipeline configuration
-tests/
-  test_parsers.py          — Parser unit tests
-  test_pipeline.py         — Integration tests
-  test_versioning.py       — Versioning tests
-```
+---
 
-## Key Concepts Practiced
+## Крок 7: Вивчити код
 
-| Concept | Where in code |
+Пройдіться по основних файлах та зрозумійте як працює кожен компонент:
+
+| Файл | Що робить |
 |---|---|
-| PDF/DOCX/HTML parsing | `src/parsers/` |
-| OCR fallback | `src/parsers/pdf_parser.py` |
-| Streaming ingestion | `src/streaming/watcher.py` + `queue.py` |
-| Queue + batching | `src/streaming/batcher.py` |
-| Data versioning | `src/versioning/version_store.py` |
-| Pipeline orchestration | `src/ingestion/pipeline.py` |
+| `src/main.py` | Точка входу, запуск pipeline |
+| `src/parsers/router.py` | Роутер — визначає тип файлу та парсить через `unstructured` |
+| `src/parsers/base.py` | Модель даних `ParsedDocument` |
+| `src/ingestion/pipeline.py` | Головний pipeline — з'єднує парсинг, чанкінг, версіонування |
+| `src/ingestion/chunker.py` | Розбиття тексту на чанки (fixed size / sentence) |
+| `src/ingestion/resilience.py` | Валідація файлів, retry, quarantine для поганих файлів |
+| `src/streaming/watcher.py` | File watcher — слідкує за новими файлами |
+| `src/streaming/queue.py` | Async черга документів |
+| `src/streaming/batcher.py` | Батчинг — групує документи для обробки |
+| `src/versioning/version_store.py` | Версіонування — зберігає snapshot кожного прогону |
+| `configs/pipeline.yaml` | Конфігурація pipeline |
+
+---
+
+## Крок 8: Прочитати CHALLENGES.md
+
+```bash
+cat CHALLENGES.md
+```
+
+Тут описані 12 реальних enterprise-проблем з документами (corrupted files, wrong encoding, password-protected PDFs тощо) та як pipeline їх вирішує.
+
+---
+
+## Структура проєкту
+
+```
+homework/
+├── src/
+│   ├── main.py                  — Точка входу
+│   ├── generate_samples.py      — Генерація тестових документів
+│   ├── generate_bad_samples.py  — Генерація "поганих" документів
+│   ├── parsers/
+│   │   ├── base.py              — ParsedDocument dataclass
+│   │   └── router.py            — ParserRouter (unstructured)
+│   ├── ingestion/
+│   │   ├── pipeline.py          — IngestionPipeline
+│   │   ├── chunker.py           — Chunker
+│   │   └── resilience.py        — FileValidator, ResilientParser, DeadLetterQueue
+│   ├── streaming/
+│   │   ├── watcher.py           — FileWatcher
+│   │   ├── queue.py             — DocumentQueue
+│   │   └── batcher.py           — Batcher
+│   └── versioning/
+│       └── version_store.py     — VersionStore
+├── configs/
+│   └── pipeline.yaml
+├── samples/                     — Тестові документи (генеруються)
+├── data/
+│   ├── processed/               — Результати обробки
+│   ├── quarantine/              — Файли що не пройшли валідацію
+│   └── versions/                — Версії snapshots
+├── tests/                       — Тести
+├── requirements.txt
+├── CHALLENGES.md
+└── README.md                    — Цей файл
+```
