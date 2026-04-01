@@ -1,7 +1,0 @@
-{
-  "file": "samples/enterprise_challenges/empty_file.pdf",
-  "error_type": "validation_failed",
-  "message": "File is empty (0 bytes)",
-  "severity": "fatal",
-  "suggestion": "File is empty. Check the source system for export errors."
-}

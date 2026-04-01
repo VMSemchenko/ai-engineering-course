@@ -1,7 +1,0 @@
-{
-  "file": "samples/enterprise_challenges/actually_html.pdf",
-  "error_type": "PDFPageCountError",
-  "message": "Unable to get page count.\nSyntax Warning: May not be a PDF file (continuing anyway)\nSyntax Error (2): Illegal character <68> in hex string\nSyntax Error (3): Illegal character <74> in hex string\nSyntax Error (4): Illegal character <6d> in hex string\nSyntax Error (5): Illegal character <6c> in hex string\nSyntax Error (9): Illegal character <6f> in hex string\nSyntax Error (11): Illegal character <79> in hex string\nSyntax Error (14): Illegal character <68> in hex string\nSyntax Error: Couldn't find trailer dictionary\nSyntax Error: Couldn't find trailer dictionary\nSyntax Error: Couldn't read xref table\n",
-  "severity": "fatal",
-  "suggestion": "Check logs and investigate the file manually."
-}

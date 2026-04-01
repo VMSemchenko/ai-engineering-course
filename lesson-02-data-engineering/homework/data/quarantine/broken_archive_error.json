@@ -1,7 +1,0 @@
-{
-  "file": "samples/enterprise_challenges/broken_archive.docx",
-  "error_type": "UnsupportedFileFormatError",
-  "message": "Partitioning is not supported for the FileType.ZIP file type.",
-  "severity": "fatal",
-  "suggestion": "Check logs and investigate the file manually."
-}

@@ -1,7 +1,0 @@
-{
-  "file": "samples/enterprise_challenges/corrupted_truncated.pdf",
-  "error_type": "PDFPageCountError",
-  "message": "Unable to get page count.\nSyntax Error: Couldn't find trailer dictionary\nSyntax Error: Couldn't find trailer dictionary\nSyntax Error: Couldn't read xref table\n",
-  "severity": "fatal",
-  "suggestion": "Check logs and investigate the file manually."
-}
