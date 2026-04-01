@@ -10,6 +10,9 @@ charset-normalizer>=3.0.0
 # File type detection via magic bytes (replaces hand-rolled MAGIC_SIGNATURES)
 filetype>=1.2.0
 
+# PDF table extraction
+pdfplumber>=0.10.0
+
 # Retry with backoff (replaces hand-rolled retry_with_backoff)
 tenacity>=9.0.0
 

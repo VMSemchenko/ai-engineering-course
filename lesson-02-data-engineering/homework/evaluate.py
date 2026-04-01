@@ -298,53 +298,58 @@ else:
 
 
 # ===========================================================================
-# Завдання 5: Dead Letter Queue
+# Завдання 5: Витягування таблиць з PDF
 # ===========================================================================
 print("\n" + "=" * 60)
-print("ЗАВДАННЯ 5: Dead Letter Queue")
+print("ЗАВДАННЯ 5: Витягування таблиць з PDF")
 print("=" * 60)
 
-DLQ = ns.get("DeadLetterQueue")
-process_all = ns.get("process_all")
+extract_tables = ns.get("extract_tables_from_pdf")
+pdf_table_file = "samples/enterprise_challenges/financial_report_table.pdf"
 
-if DLQ is None or process_all is None:
-    print("  [SKIP] DeadLetterQueue або process_all не знайдені")
+if extract_tables is None:
+    print("  [SKIP] Функція extract_tables_from_pdf не знайдена")
+    TOTAL_POINTS += 20
+elif not Path(pdf_table_file).exists():
+    print(f"  [SKIP] Файл {pdf_table_file} не знайдено")
     TOTAL_POINTS += 20
 else:
-    # Тест DLQ окремо
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmpdir:
-        dlq = DLQ(dlq_dir=f"{tmpdir}/dlq")
-        test_file = Path("samples/enterprise_challenges/empty_file.pdf")
-
-        dlq.send(str(test_file), error_type="empty", error_message="File is empty")
-
-        check("DLQ.send() додає помилку", 3, dlq.count == 1, f"count={dlq.count}")
-        check("DLQ файл скопійовано", 3,
-              (Path(f"{tmpdir}/dlq") / "empty_file.pdf").exists() or dlq.count > 0)
-
-        errors = dlq.list_errors()
-        check("DLQ error має file поле", 2,
-              len(errors) > 0 and "file" in errors[0],
-              f"errors={errors}")
-
-        error_json = Path(f"{tmpdir}/dlq") / "empty_file_error.json"
-        check("DLQ error report JSON створено", 2, error_json.exists())
-
-    # Тест process_all
-    r, err = safe_call(process_all, "samples/enterprise_challenges")
+    r, err = safe_call(extract_tables, pdf_table_file)
     if err:
-        print(f"  [ERROR] process_all: {err}")
-        TOTAL_POINTS += 10
+        print(f"  [ERROR] extract_tables_from_pdf: {err}")
+        TOTAL_POINTS += 20
     else:
-        stats = r.get("stats", {})
-        check("process_all повертає stats", 2, "total" in stats)
-        check("Є успішні файли", 3, stats.get("success", 0) > 0,
-              f"success={stats.get('success')}")
-        check("Є dead letters", 3, stats.get("dead_letters", 0) > 0,
-              f"dead_letters={stats.get('dead_letters')}")
-        check("total = success + dead_letters", 2,
-              stats.get("total", 0) == stats.get("success", 0) + stats.get("dead_letters", 0))
+        check("Повертає list", 2, isinstance(r, list))
+        check("Знайдено 2 таблиці", 3, len(r) == 2, f"tables={len(r)}")
+
+        if len(r) >= 1 and isinstance(r[0], list) and len(r[0]) > 0:
+            t1 = r[0]
+            check("Таблиця 1: рядки — словники", 2,
+                  isinstance(t1[0], dict), f"type={type(t1[0]).__name__}")
+            check("Таблиця 1: є ключ 'Region'", 2,
+                  "Region" in t1[0], f"keys={list(t1[0].keys())[:3]}")
+            check("Таблиця 1: 5 рядків даних (без заголовка)", 2,
+                  len(t1) == 5, f"rows={len(t1)}")
+            # Перевіримо конкретне значення
+            na_row = [row for row in t1 if row.get("Region") == "North America"]
+            check("Таблиця 1: North America Q1 = 1,200,000", 3,
+                  len(na_row) > 0 and na_row[0].get("Q1") == "1,200,000",
+                  f"na_row={na_row[0] if na_row else 'not found'}")
+        else:
+            print("  [FAIL] Таблиця 1 порожня або неправильний формат")
+            TOTAL_POINTS += 9
+
+        if len(r) >= 2 and isinstance(r[1], list) and len(r[1]) > 0:
+            t2 = r[1]
+            check("Таблиця 2: є ключ 'Product'", 2,
+                  "Product" in t2[0], f"keys={list(t2[0].keys())[:3]}")
+            check("Таблиця 2: 4 рядки даних", 2,
+                  len(t2) == 4, f"rows={len(t2)}")
+            check("Таблиця 2: Enterprise Platform revenue", 2,
+                  any(row.get("Product") == "Enterprise Platform" for row in t2))
+        else:
+            print("  [FAIL] Таблиця 2 порожня або неправильний формат")
+            TOTAL_POINTS += 6
 
 
 # ===========================================================================
