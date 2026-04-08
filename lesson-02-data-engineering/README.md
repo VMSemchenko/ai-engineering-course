@@ -82,3 +82,50 @@ All test files are in `samples/enterprise_challenges/`:
 | 200 | 4,000 | +0 |
 
 > Overlap had no effect on chunk count for this file because audit log entries are short and self-contained — `RecursiveCharacterTextSplitter` splits cleanly at `\n` boundaries.
+
+---
+
+## Task 2: AWS Pipeline — PDF Ingestion
+
+Automated pipeline for processing PDF documents on AWS.
+
+**Architecture:** `PDF → S3 → SQS → Lambda (pypdf) → S3`
+
+### AWS Resources Created
+
+| Resource | Name | Purpose |
+|---|---|---|
+| S3 Bucket (input) | `pdf-input-bucket-vs` | Upload PDFs here to trigger the pipeline |
+| S3 Bucket (output) | `pdf-output-bucket-vs` | Extracted text files are saved here |
+| SQS Queue | `pdf-ingestion-queue` | Receives S3 event notifications on new PDF uploads |
+| Lambda Function | `pdf-processor` | Reads PDF from S3, extracts text via `pypdf`, saves `.txt` to output bucket, deletes original |
+| Lambda Layer | `pypdf-layer` | Packages the `pypdf` third-party library for Lambda runtime |
+
+### How It Works
+
+1. A PDF is uploaded to `pdf-input-bucket-vs`
+2. S3 fires an event notification (filtered by `.pdf` suffix) → message sent to `pdf-ingestion-queue` (SQS)
+3. SQS triggers `pdf-processor` Lambda
+4. Lambda downloads the PDF, extracts text using `pypdf`, saves the result as `.txt` to `pdf-output-bucket-vs`
+5. Lambda **automatically deletes** the original PDF from the input bucket (cost saving)
+
+### Lambda Code
+
+See [`aws-pipeline/lambda_function.py`](aws-pipeline/lambda_function.py)
+
+### Evidence
+
+All evidence files are in [`aws-pipeline/evidence/`](aws-pipeline/evidence/):
+
+| File | Description |
+|---|---|
+| `01_s3_buckets.png` | AWS S3 console showing both input and output buckets created in eu-north-1 |
+| `02_sqs_queue.png` | AWS SQS console showing `pdf-ingestion-queue` (Standard queue) |
+| `03_lambda_function.png` | AWS Lambda console showing `pdf-processor` with code, SQS trigger, and pypdf layer |
+| `04_cloudwatch_logs.png` | AWS CloudWatch log streams proving the Lambda executed successfully |
+| `Invoice_EUINUA26_207431.txt` | **Actual output** — text extracted from a real invoice PDF by the Lambda function |
+
+### Cost Safety
+
+- Source PDFs are **auto-deleted** by the Lambda after processing
+- An AWS **Zero-Spend Budget** alert is set up to notify on any charges above $0.01/month
