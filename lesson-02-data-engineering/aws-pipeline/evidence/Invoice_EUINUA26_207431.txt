@@ -1,0 +1,55 @@
+VAT InvoiceEmail or talk to us about your AWS account or bill, visit console.aws.amazon.com/support
+More information regarding your service charges is available by accessing your Billing Management Console
+Account number:
+825736826306
+Address:
+VadymSemchenko
+ATTN: Vadym Semchenko
+Voyenna
+33 - 62
+Kharkiv, Kharkivska oblast, 61001, UA
+Invoice Summary
+VAT Invoice Number: EUINUA26-207431
+VAT Invoice Date: April 1, 2026
+TOTAL AMOUNT USD 95.62
+TOTAL VAT USD 15.94
+This VAT Invoice is for the billing period March 1 - March 31, 2026
+Invoice Summary
+AWS Service Charges USD 95.62
+Charges USD 79.68
+Net Charges (After Credits/Discounts, excl. Tax) USD 79.68
+VAT - 20% USD 15.94
+Detail
+AWS Glue USD 0.00
+Amazon Elastic Compute Cloud USD 10.06
+Charges USD 8.38
+VAT USD 1.68
+Amazon DynamoDB USD 0.00
+Amazon Simple Notiﬁcation Service USD 0.00
+AWS Key Management Service USD 0.00
+Amazon Virtual Private Cloud USD 8.93
+Charges USD 7.44
+VAT USD 1.49
+Amazon DocumentDB (with MongoDB compatibility) USD 56.36
+Charges USD 46.97
+VAT USD 9.39
+AmazonCloudWatch USD 0.00
+AMAZON WEB SERVICES EMEA SOCIÉTÉ À RESPONSABILITÉ LIMITÉE
+38 AVENUE JOHN F. KENNEDY, L-1855 LUXEMBOURG
+R.C.S. LUXEMBOURG : B186284
+Autorisation d'établissement en qualité de commerçante n° 10048410 · TVA n* LU 26888617
+Ukraine VAT Registration Number: 880019101
+1 / 2
+Amazon Relational Database Service USD 20.26
+Charges USD 16.88
+VAT USD 3.38
+Amazon Simple Storage Service USD 0.01
+Charges USD 0.01
+AWS Data Transfer USD 0.00
+AWS Secrets Manager USD 0.00
+AMAZON WEB SERVICES EMEA SOCIÉTÉ À RESPONSABILITÉ LIMITÉE
+38 AVENUE JOHN F. KENNEDY, L-1855 LUXEMBOURG
+R.C.S. LUXEMBOURG : B186284
+Autorisation d'établissement en qualité de commerçante n° 10048410 · TVA n* LU 26888617
+Ukraine VAT Registration Number: 880019101
+2 / 2
