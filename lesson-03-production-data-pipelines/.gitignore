@@ -4,9 +4,9 @@ __pycache__/
 .claude/
 
 # dbt
-dbt_project/target/
-dbt_project/logs/
-dbt_project/.user.yml
+**/dbt_project/target/
+**/dbt_project/logs/
+**/dbt_project/.user.yml
 
 # generated data
 resume-pipeline/data/*.json
