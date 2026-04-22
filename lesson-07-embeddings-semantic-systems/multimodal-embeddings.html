@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embeddings не тільки для тексту</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: #e2e8f0;
+    line-height: 1.6;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  h1 {
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, #a5b4fc, #f0abfc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+  .subtitle { color: #94a3b8; font-size: 1.1rem; }
+
+  section {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  h2 {
+    color: #c4b5fd;
+    margin-bottom: 1rem;
+    font-size: 1.6rem;
+  }
+  h3 { color: #e9d5ff; margin: 1.5rem 0 0.75rem 0; font-size: 1.2rem; }
+  p { margin-bottom: 1rem; color: #cbd5e1; }
+  code {
+    background: rgba(0,0,0,0.4);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.9em;
+    color: #fde68a;
+  }
+
+  .big-idea {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(236, 72, 153, 0.12));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    padding: 1.5rem 2rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .big-idea .headline {
+    font-size: 1.3rem;
+    color: #fde68a;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .modalities {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .modality {
+    background: rgba(0,0,0,0.3);
+    padding: 1.2rem;
+    border-radius: 12px;
+    border-top: 3px solid;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  .modality:hover { transform: translateY(-3px); }
+  .modality.text { border-color: #8b5cf6; }
+  .modality.image { border-color: #ec4899; }
+  .modality.audio { border-color: #22c55e; }
+  .modality.code { border-color: #3b82f6; }
+  .modality.user { border-color: #fbbf24; }
+  .modality .icon { font-size: 3rem; margin-bottom: 0.5rem; }
+  .modality h4 { color: #e9d5ff; margin-bottom: 0.3rem; }
+  .modality .dim { color: #fbbf24; font-family: monospace; font-size: 0.85rem; }
+  .modality p { font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem; margin-bottom: 0; }
+
+  .clip-demo {
+    background: rgba(0,0,0,0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .clip-search {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .clip-search input {
+    flex: 1;
+    padding: 0.7rem 1rem;
+    font-size: 0.95rem;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-family: inherit;
+  }
+  .clip-search button {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    border: none;
+    color: white;
+    padding: 0.7rem 1.3rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .clip-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .chip {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    padding: 0.3rem 0.7rem;
+    border-radius: 15px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .chip:hover { background: rgba(139, 92, 246, 0.3); }
+  .clip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.7rem;
+  }
+  .clip-img {
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 1rem 0.5rem;
+    text-align: center;
+    border: 2px solid rgba(255,255,255,0.05);
+    transition: all 0.4s;
+    position: relative;
+    overflow: hidden;
+  }
+  .clip-img.match {
+    border-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+    transform: scale(1.05);
+  }
+  .clip-img.dim { opacity: 0.3; }
+  .clip-img .emoji { font-size: 2.5rem; display: block; margin-bottom: 0.3rem; }
+  .clip-img .label { font-size: 0.78rem; color: #cbd5e1; }
+  .clip-img .score {
+    font-size: 0.72rem;
+    color: #fbbf24;
+    font-family: monospace;
+    margin-top: 0.2rem;
+  }
+  .clip-img.match .score { font-weight: 700; }
+
+  .shared-space {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+  .space-diagram {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1.5rem;
+    align-items: center;
+    margin: 1.5rem 0;
+  }
+  .encoder-box {
+    background: rgba(0,0,0,0.35);
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .encoder-box h5 { color: #e9d5ff; margin-bottom: 0.4rem; font-size: 0.95rem; }
+  .encoder-box .input-sample {
+    background: rgba(139, 92, 246, 0.1);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    margin: 0.2rem 0;
+    font-size: 0.82rem;
+  }
+  .arrow-center {
+    font-size: 2rem;
+    color: #8b5cf6;
+  }
+  .vector-center {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2));
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+  }
+  .vector-center h5 { color: #fde68a; margin-bottom: 0.4rem; }
+  .vector-center code { display: block; margin: 0.2rem 0; font-size: 0.75rem; text-align: left; }
+
+  .audio-viz {
+    background: rgba(0,0,0,0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .audio-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 100px;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.6rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: all 0.4s;
+  }
+  .audio-row.highlight {
+    background: rgba(34, 197, 94, 0.08);
+    border-left: 3px solid #22c55e;
+  }
+  .audio-emoji { font-size: 2rem; text-align: center; }
+  .audio-info .title { color: #e9d5ff; font-weight: 500; font-size: 0.95rem; }
+  .audio-info .meta { color: #94a3b8; font-size: 0.8rem; }
+  .audio-waveform {
+    display: flex;
+    gap: 2px;
+    align-items: end;
+    height: 30px;
+    margin-top: 0.3rem;
+  }
+  .audio-waveform span {
+    display: block;
+    width: 2px;
+    background: #8b5cf6;
+    border-radius: 1px;
+  }
+  .audio-score {
+    text-align: right;
+    color: #fbbf24;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+
+  .code-demo {
+    background: rgba(0,0,0,0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .code-query {
+    background: rgba(139, 92, 246, 0.1);
+    border-left: 3px solid #8b5cf6;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    color: #e2e8f0;
+  }
+  .code-results { display: flex; flex-direction: column; gap: 0.6rem; }
+  .code-snippet {
+    background: #0b1220;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+  .code-snippet.match { border-color: rgba(59, 130, 246, 0.5); }
+  .code-snippet-header {
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.4rem 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: #93c5fd;
+  }
+  .code-snippet pre {
+    padding: 0.7rem 1rem;
+    margin: 0;
+    font-family: 'Monaco', monospace;
+    font-size: 0.82rem;
+    color: #e2e8f0;
+    overflow-x: auto;
+    line-height: 1.4;
+  }
+  .code-snippet .kw { color: #c084fc; }
+  .code-snippet .str { color: #86efac; }
+  .code-snippet .fn { color: #60a5fa; }
+  .code-snippet .cm { color: #64748b; font-style: italic; }
+
+  .recsys-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .recsys-card {
+    background: rgba(0,0,0,0.3);
+    padding: 1.3rem;
+    border-radius: 12px;
+    border-top: 3px solid #fbbf24;
+  }
+  .recsys-card h4 { color: #fde68a; margin-bottom: 0.5rem; }
+
+  .user-item-demo {
+    background: rgba(0,0,0,0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .user-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .user-tab {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    color: #fde68a;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .user-tab.active {
+    background: linear-gradient(135deg, #fbbf24, #ec4899);
+    color: white;
+    border-color: transparent;
+  }
+  .user-profile {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .profile-box {
+    background: rgba(255,255,255,0.03);
+    padding: 1rem;
+    border-radius: 10px;
+  }
+  .profile-box h5 { color: #fde68a; margin-bottom: 0.5rem; font-size: 0.9rem; }
+  .profile-box .liked {
+    font-size: 0.88rem;
+    padding: 0.2rem 0.4rem;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 4px;
+    margin: 0.2rem 0;
+    display: inline-block;
+    margin-right: 0.3rem;
+  }
+  .reco-list { display: flex; flex-direction: column; gap: 0.4rem; }
+  .reco-item {
+    background: rgba(255,255,255,0.03);
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 30px 1fr auto;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 0.88rem;
+  }
+  .reco-item.top {
+    background: rgba(251, 191, 36, 0.08);
+    border-left: 3px solid #fbbf24;
+  }
+  .reco-rank { color: #fbbf24; font-family: monospace; font-weight: 700; }
+  .reco-title { color: #e9d5ff; }
+  .reco-match { color: #86efac; font-size: 0.78rem; font-family: monospace; }
+
+  .key-fact {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 4px solid #fbbf24;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+  }
+  .key-fact strong { color: #fde68a; }
+
+  .cross-modal {
+    text-align: center;
+    padding: 2rem 1rem;
+    background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.15), transparent);
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .cross-flow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 1.5rem;
+    margin: 1rem 0;
+  }
+  .cross-item {
+    background: rgba(0,0,0,0.4);
+    padding: 0.8rem 1.2rem;
+    border-radius: 10px;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    font-size: 1rem;
+  }
+  .cross-arrow { color: #fbbf24; font-size: 1.3rem; }
+
+  footer {
+    text-align: center;
+    color: #64748b;
+    margin-top: 3rem;
+    padding: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 720px) {
+    body { padding: 1rem; }
+    h1 { font-size: 1.8rem; }
+    .space-diagram { grid-template-columns: 1fr; }
+    .arrow-center { transform: rotate(90deg); }
+    .user-profile, .recsys-grid { grid-template-columns: 1fr; }
+    .audio-row { grid-template-columns: 50px 1fr 70px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🌐 Embeddings не тільки для тексту</h1>
+    <p class="subtitle">Один патерн для всього: зображення, звук, код, користувачі</p>
+  </header>
+
+  <section>
+    <h2>💡 Головна ідея</h2>
+    <div class="big-idea">
+      <div class="headline">Embedding — це не про текст. Це універсальний патерн.</div>
+      <p style="margin: 0; color: #cbd5e1;">
+        Будь-що, що можна <em>перетворити в вектор</em> так, щоб <strong>схожі об'єкти опинялись близько</strong> —
+        стає придатним для similarity search, рекомендацій, кластеризації та RAG.
+      </p>
+    </div>
+
+    <p>Подивись, що стає векторами у сучасних системах:</p>
+
+    <div class="modalities">
+      <div class="modality text">
+        <div class="icon">📝</div>
+        <h4>Text</h4>
+        <div class="dim">1536 dim</div>
+        <p>text-embedding-3-small, Cohere, Voyage</p>
+      </div>
+      <div class="modality image">
+        <div class="icon">🖼️</div>
+        <h4>Image</h4>
+        <div class="dim">512 dim</div>
+        <p>CLIP, DINO, SigLIP</p>
+      </div>
+      <div class="modality audio">
+        <div class="icon">🔊</div>
+        <h4>Audio</h4>
+        <div class="dim">768 dim</div>
+        <p>Whisper, Wav2Vec 2.0, CLAP</p>
+      </div>
+      <div class="modality code">
+        <div class="icon">💻</div>
+        <h4>Code</h4>
+        <div class="dim">1024 dim</div>
+        <p>voyage-code-3, CodeBERT, CodeT5</p>
+      </div>
+      <div class="modality user">
+        <div class="icon">👤</div>
+        <h4>User / Item</h4>
+        <div class="dim">64–256 dim</div>
+        <p>Two-tower, DSSM, graph embeddings</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>🖼️ Image Embeddings (CLIP)</h2>
+    <p>
+      <strong>CLIP</strong> (Contrastive Language-Image Pre-training) від OpenAI — модель, яка
+      вивчила <em>спільний простір</em> для картинок і тексту. Обидва перетворюються у вектори
+      в одному просторі, тому можна шукати картинки <strong>текстовим запитом</strong>
+      (і навпаки).
+    </p>
+
+    <div class="shared-space">
+      <h3 style="margin-top: 0;">Магія спільного embedding space</h3>
+      <div class="space-diagram">
+        <div class="encoder-box">
+          <h5>🔤 Text Encoder</h5>
+          <div class="input-sample">"a photo of a cat"</div>
+          <div class="input-sample">"собака на пляжі"</div>
+          <div class="input-sample">"pizza with pepperoni"</div>
+        </div>
+        <div class="arrow-center">→ →</div>
+        <div class="vector-center">
+          <h5>🎯 Shared Vector Space</h5>
+          <code>[0.12, -0.84, 0.45, ...]</code>
+          <p style="font-size: 0.82rem; color: #cbd5e1; margin: 0.5rem 0 0 0;">Картинка з котом і текст "a cat" мають близькі вектори</p>
+        </div>
+      </div>
+      <div class="space-diagram">
+        <div class="encoder-box">
+          <h5>🖼️ Image Encoder</h5>
+          <div class="input-sample">🐱 [JPEG]</div>
+          <div class="input-sample">🐕 [PNG]</div>
+          <div class="input-sample">🍕 [JPEG]</div>
+        </div>
+        <div class="arrow-center">→ →</div>
+        <div class="vector-center">
+          <h5>🎯 Той самий простір</h5>
+          <code>[0.10, -0.81, 0.48, ...]</code>
+          <p style="font-size: 0.82rem; color: #cbd5e1; margin: 0.5rem 0 0 0;">Vision Transformer кодує пікселі у ту ж геометрію</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>🔎 Спробуй: пошук зображень текстом</h3>
+    <p>Введи опис — CLIP знайде найбільш релевантні картинки:</p>
+
+    <div class="clip-demo">
+      <div class="clip-suggestions">
+        <span class="chip" data-clip="милий котик">милий котик</span>
+        <span class="chip" data-clip="собака грає на пляжі">собака грає на пляжі</span>
+        <span class="chip" data-clip="їжа італійська">їжа італійська</span>
+        <span class="chip" data-clip="автомобіль швидкий">автомобіль швидкий</span>
+        <span class="chip" data-clip="природа ліс">природа ліс</span>
+        <span class="chip" data-clip="sunset over ocean">sunset over ocean</span>
+      </div>
+
+      <div class="clip-search">
+        <input type="text" id="clipInput" placeholder="напр. 'sunny beach with palm trees'" value="милий котик">
+        <button id="clipBtn">🔎 Знайти</button>
+      </div>
+
+      <div class="clip-grid" id="clipGrid"></div>
+    </div>
+
+    <div class="key-fact">
+      <strong>Де це працює:</strong> Google Photos ("знайди фото з собаками на пляжі"),
+      Pinterest, Unsplash search, e-commerce visual search, content moderation, автотегування медіатек.
+    </div>
+  </section>
+
+  <section>
+    <h2>🔊 Audio Embeddings</h2>
+    <p>
+      Звук теж можна закодувати у вектор. Аудіо-embedding вчиться на мільйонах годин подкастів,
+      музики, мови — так, щоб <em>схожі звуки</em> мали близькі вектори: два гавкання собак,
+      два голоси однієї людини, два треки в одному жанрі.
+    </p>
+
+    <p>Популярні моделі:</p>
+    <ul style="padding-left: 1.5rem; color: #cbd5e1;">
+      <li><code>Whisper</code> (OpenAI) — speech embeddings, мова → вектор</li>
+      <li><code>Wav2Vec 2.0</code> (Meta) — self-supervised на сирому аудіо</li>
+      <li><code>CLAP</code> (Contrastive Language-Audio) — спільний простір звук ↔ текст, як CLIP</li>
+      <li><code>Spotify's musicnn</code> — embeddings для жанрів та настрою треків</li>
+    </ul>
+
+    <h3>🎧 Приклад: пошук треків за настроєм</h3>
+    <p>Обери настрій — знайде найбільш схожі аудіо у базі (за їх embeddings):</p>
+
+    <div class="audio-viz">
+      <div class="clip-suggestions" style="margin-bottom: 1rem;">
+        <span class="chip" data-mood="energetic">⚡ Energetic</span>
+        <span class="chip" data-mood="calm">🌊 Calm</span>
+        <span class="chip" data-mood="sad">💧 Sad</span>
+        <span class="chip" data-mood="party">🎉 Party</span>
+        <span class="chip" data-mood="focus">🎯 Focus</span>
+      </div>
+
+      <div id="audioResults"></div>
+    </div>
+
+    <p>Крім музики — audio embeddings використовують для:</p>
+    <ul style="padding-left: 1.5rem; color: #cbd5e1;">
+      <li>🎙️ <strong>Speaker identification</strong> — «це той самий голос?»</li>
+      <li>🎵 <strong>Shazam-like</strong> пошук треку за фрагментом</li>
+      <li>🔔 <strong>Детекція подій</strong> — плач дитини, розбите скло, постріли</li>
+      <li>🦉 <strong>Biodiversity monitoring</strong> — розпізнавання видів птахів за співом</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>💻 Code Embeddings</h2>
+    <p>
+      Код — це окрема модальність. Звичайна text-модель погано розуміє синтаксис, сигнатури
+      функцій, AST. Тому існують спеціалізовані моделі: <code>voyage-code-3</code>,
+      <code>CodeBERT</code>, <code>CodeT5</code>, <code>StarCoder embeddings</code>.
+    </p>
+
+    <div class="code-demo">
+      <div class="code-query">
+        🔍 Query: <strong>"сортування масиву у Python"</strong>
+      </div>
+
+      <div class="code-results">
+        <div class="code-snippet match">
+          <div class="code-snippet-header">
+            <span>📄 utils/sort.py</span>
+            <span style="color: #fbbf24;">similarity: 0.91</span>
+          </div>
+<pre><span class="kw">def</span> <span class="fn">quick_sort</span>(arr):
+    <span class="cm"># рекурсивний quicksort</span>
+    <span class="kw">if</span> <span class="fn">len</span>(arr) &lt;= 1:
+        <span class="kw">return</span> arr
+    pivot = arr[<span class="fn">len</span>(arr) // 2]
+    <span class="kw">return</span> <span class="fn">quick_sort</span>([x <span class="kw">for</span> x <span class="kw">in</span> arr <span class="kw">if</span> x &lt; pivot]) + \
+           [pivot] + \
+           <span class="fn">quick_sort</span>([x <span class="kw">for</span> x <span class="kw">in</span> arr <span class="kw">if</span> x &gt; pivot])</pre>
+        </div>
+
+        <div class="code-snippet match">
+          <div class="code-snippet-header">
+            <span>📄 helpers.py</span>
+            <span style="color: #fbbf24;">similarity: 0.87</span>
+          </div>
+<pre><span class="kw">def</span> <span class="fn">order_items</span>(items):
+    <span class="cm"># сортуємо за зростанням</span>
+    <span class="kw">return</span> <span class="fn">sorted</span>(items, key=<span class="kw">lambda</span> x: x.value)</pre>
+        </div>
+
+        <div class="code-snippet">
+          <div class="code-snippet-header">
+            <span>📄 search.py</span>
+            <span style="color: #94a3b8;">similarity: 0.42</span>
+          </div>
+<pre><span class="kw">def</span> <span class="fn">binary_search</span>(arr, target):
+    left, right = <span class="fn">0</span>, <span class="fn">len</span>(arr) - <span class="fn">1</span>
+    <span class="kw">while</span> left &lt;= right:
+        mid = (left + right) // <span class="fn">2</span>
+        ...</pre>
+        </div>
+
+        <div class="code-snippet">
+          <div class="code-snippet-header">
+            <span>📄 validator.py</span>
+            <span style="color: #94a3b8;">similarity: 0.18</span>
+          </div>
+<pre><span class="kw">def</span> <span class="fn">validate_email</span>(email: <span class="fn">str</span>) -&gt; <span class="fn">bool</span>:
+    <span class="kw">return</span> <span class="str">"@"</span> <span class="kw">in</span> email</pre>
+        </div>
+      </div>
+    </div>
+
+    <h3>Навіщо окремі моделі для коду?</h3>
+    <p>Звичайний text-embedder бачить <code>for i in range(10)</code> як «просто текст». А code-embedder розуміє:</p>
+    <ul style="padding-left: 1.5rem; color: #cbd5e1;">
+      <li>🧩 <strong>Структуру AST</strong> — яка функція що викликає</li>
+      <li>🔗 <strong>Семантику операцій</strong> — <code>arr.sort()</code> і <code>sorted(arr)</code> роблять схоже</li>
+      <li>📚 <strong>Docstrings і коментарі</strong> — як контекст для функції</li>
+      <li>🌐 <strong>Крос-мовність</strong> — Python <code>def</code> і JS <code>function</code> — схожі концепти</li>
+    </ul>
+
+    <div class="key-fact">
+      <strong>Де використовують:</strong> GitHub Copilot, Cursor, Sourcegraph Cody, semantic code search,
+      детекція дублікатів коду, автоматичний рев'ю, knowledge base по внутрішньому монорепо.
+    </div>
+  </section>
+
+  <section>
+    <h2>👤 User/Item Embeddings у рекомендаційних системах</h2>
+    <p>
+      Найбільш цікаве застосування — <strong>embeddings для людей і товарів</strong>.
+      Spotify, TikTok, Netflix, Amazon, YouTube — всі кодують <em>користувачів</em>
+      і <em>контент</em> в одному векторному просторі.
+    </p>
+
+    <div class="recsys-grid">
+      <div class="recsys-card">
+        <h4>👤 User embedding</h4>
+        <p style="font-size: 0.9rem;">Вектор, який узагальнює <em>смаки</em> користувача з історії взаємодій
+          (лайки, перегляди, час прослуховування, скіпи).</p>
+        <p style="font-size: 0.85rem; color: #94a3b8;">
+          Ти слухав багато рок-музики з 2010-х → твій вектор зсувається в бік «рок/ретро» у просторі.
+        </p>
+      </div>
+      <div class="recsys-card">
+        <h4>🎵 Item embedding</h4>
+        <p style="font-size: 0.9rem;">Вектор для треку/відео/товару, що кодує його властивості:
+          жанр, темп, тема, автор, цільова аудиторія.</p>
+        <p style="font-size: 0.85rem; color: #94a3b8;">
+          Два треки з однаковим настроєм — поруч у просторі, навіть якщо в різних жанрах.
+        </p>
+      </div>
+    </div>
+
+    <div class="big-idea">
+      <div class="headline">🪄 Рекомендація = similarity search</div>
+      <p style="margin: 0;">Знайти треки, чиї item-вектори <strong>найближчі</strong> до user-вектора.
+        Той самий патерн, що й у text search — просто інші embeddings.</p>
+    </div>
+
+    <h3>🎧 Приклад: Spotify-like рекомендації</h3>
+    <p>Обери користувача — подивись, які треки йому порекомендує система на основі «embedding-близькості»:</p>
+
+    <div class="user-item-demo">
+      <div class="user-tabs">
+        <button class="user-tab active" data-user="rock">🎸 Rock fan</button>
+        <button class="user-tab" data-user="electronic">🎛️ Electronic</button>
+        <button class="user-tab" data-user="classical">🎻 Classical</button>
+        <button class="user-tab" data-user="hiphop">🎤 Hip-Hop</button>
+      </div>
+
+      <div class="user-profile">
+        <div class="profile-box">
+          <h5>👤 Історія лайків</h5>
+          <div id="userHistory"></div>
+        </div>
+        <div class="profile-box">
+          <h5>🎯 Рекомендації (найближчі item-вектори)</h5>
+          <div class="reco-list" id="recoList"></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Як вчать такі embeddings</h3>
+    <p>Популярні підходи у production recsys:</p>
+    <ul style="padding-left: 1.5rem; color: #cbd5e1;">
+      <li><strong>Matrix Factorization</strong> — класика: user × item матриця → два embedding-таблиці</li>
+      <li><strong>Two-tower models</strong> (Google, YouTube) — окремі нейромережі для user і item, cosine між векторами</li>
+      <li><strong>Graph embeddings</strong> (node2vec, PinSage) — Pinterest кодує як поведінку, так і структуру графа «board → pin»</li>
+      <li><strong>Sequential models</strong> (BERT4Rec, SASRec) — враховують <em>порядок</em> взаємодій</li>
+    </ul>
+
+    <div class="key-fact">
+      <strong>TikTok's secret sauce:</strong> TikTok робить user embedding <em>у реальному часі</em>
+      на основі мікросигналів (скролл, rewatch, скіп на 2-й секунді). Саме тому стрічка
+      адаптується за 10–20 відео. Content embeddings враховують аудіо + відео + текст субтитрів + OCR.
+    </div>
+  </section>
+
+  <section>
+    <h2>🔄 Cross-modal: найцікавіше попереду</h2>
+    <p>
+      Коли різні модальності живуть у <strong>спільному просторі</strong> — відкриваються
+      неочікувані сценарії пошуку:
+    </p>
+
+    <div class="cross-modal">
+      <div class="cross-flow">
+        <div class="cross-item">🖼️ Image</div>
+        <span class="cross-arrow">→</span>
+        <div class="cross-item">📝 Text description</div>
+      </div>
+      <div class="cross-flow">
+        <div class="cross-item">📝 Text query</div>
+        <span class="cross-arrow">→</span>
+        <div class="cross-item">🎵 Music</div>
+      </div>
+      <div class="cross-flow">
+        <div class="cross-item">🎤 Voice recording</div>
+        <span class="cross-arrow">→</span>
+        <div class="cross-item">📄 Similar documents</div>
+      </div>
+      <div class="cross-flow">
+        <div class="cross-item">🎬 Video</div>
+        <span class="cross-arrow">→</span>
+        <div class="cross-item">🛒 Similar products</div>
+      </div>
+    </div>
+
+    <p style="text-align: center; color: #94a3b8; font-style: italic;">
+      Це не фантастика — Google Lens, Amazon StyleSnap, TikTok's sound search вже це роблять.
+    </p>
+  </section>
+
+  <section>
+    <h2>🎯 Ключовий висновок</h2>
+    <div class="big-idea">
+      <div class="headline">Embedding — це мова, якою комп'ютер описує «схожість»</div>
+      <p style="margin: 0; color: #cbd5e1;">
+        Щойно ти навчився думати в термінах векторів і cosine similarity —
+        ти розумієш, як працює <strong>пошук</strong>, <strong>рекомендації</strong>,
+        <strong>RAG</strong>, <strong>multimodal AI</strong> і навіть <strong>face recognition</strong>.
+        Це один патерн, який масштабується від тексту до будь-якої модальності.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <p>AI Engineering Course · Заняття 7 · Embeddings &amp; Semantic Systems</p>
+  </footer>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CLIP-like image search demo
+// ═══════════════════════════════════════════════════════════════
+const images = [
+  { emoji: "🐱", label: "кіт",          tags: ["кіт","кошеня","милий","тварина","cat","kitty","pet"] },
+  { emoji: "🐈", label: "котик",        tags: ["кіт","милий","тварина","cat","kitty","pet"] },
+  { emoji: "🐕", label: "собака",       tags: ["собака","пес","тварина","dog","puppy","pet"] },
+  { emoji: "🏖️", label: "пляж",         tags: ["пляж","море","beach","sand","ocean","sunny"] },
+  { emoji: "🌅", label: "захід",        tags: ["sunset","захід","море","ocean","природа","nature"] },
+  { emoji: "🌲", label: "ліс",          tags: ["ліс","природа","nature","forest","tree"] },
+  { emoji: "🏔️", label: "гори",         tags: ["гори","природа","nature","mountain"] },
+  { emoji: "🍕", label: "піца",         tags: ["їжа","італійська","food","italian","pizza"] },
+  { emoji: "🍝", label: "паста",        tags: ["їжа","італійська","food","italian","pasta"] },
+  { emoji: "🍔", label: "бургер",       tags: ["їжа","food","burger","fast food"] },
+  { emoji: "🚗", label: "машина",       tags: ["машина","авто","швидкий","car","fast","auto"] },
+  { emoji: "🏎️", label: "спортивна",    tags: ["машина","швидкий","car","fast","sport","racing"] },
+  { emoji: "✈️", label: "літак",        tags: ["літак","plane","flight","travel"] },
+  { emoji: "🎸", label: "гітара",       tags: ["музика","гітара","music","guitar","instrument"] },
+  { emoji: "📚", label: "книги",        tags: ["книги","навчання","books","reading","study"] },
+  { emoji: "🏠", label: "будинок",      tags: ["будинок","home","house","житло"] }
+];
+
+function clipSearch(query) {
+  const q = query.toLowerCase();
+  const tokens = q.split(/\s+/).filter(t => t.length > 1);
+  return images.map(img => {
+    let score = 0;
+    tokens.forEach(t => {
+      img.tags.forEach(tag => {
+        if (tag === t) score += 1.0;
+        else if (tag.includes(t) || t.includes(tag)) score += 0.5;
+      });
+    });
+    const noise = (Math.sin(img.label.length * 3.7 + tokens.length) + 1) * 0.05;
+    return { img, score: score + noise };
+  }).sort((a, b) => b.score - a.score);
+}
+
+function renderClip() {
+  const q = document.getElementById('clipInput').value.trim();
+  const results = clipSearch(q);
+  const maxScore = Math.max(...results.map(r => r.score), 0.1);
+  const grid = document.getElementById('clipGrid');
+  grid.innerHTML = results.map((r, i) => {
+    const normalized = r.score / maxScore;
+    const isMatch = i < 3 && r.score > 0.3;
+    const isDim = r.score < 0.2;
+    return `
+      <div class="clip-img ${isMatch ? 'match' : ''} ${isDim ? 'dim' : ''}">
+        <span class="emoji">${r.img.emoji}</span>
+        <div class="label">${r.img.label}</div>
+        <div class="score">${normalized.toFixed(2)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.getElementById('clipBtn').addEventListener('click', renderClip);
+document.getElementById('clipInput').addEventListener('input', renderClip);
+document.querySelectorAll('[data-clip]').forEach(c => {
+  c.addEventListener('click', () => {
+    document.getElementById('clipInput').value = c.dataset.clip;
+    renderClip();
+  });
+});
+renderClip();
+
+// ═══════════════════════════════════════════════════════════════
+// Audio mood search
+// ═══════════════════════════════════════════════════════════════
+const tracks = [
+  { title: "Thunder Strike",       artist: "Rock Titans",   mood: "energetic", bpm: 145 },
+  { title: "Electric Sunrise",     artist: "Neon Pulse",    mood: "energetic", bpm: 132 },
+  { title: "Ocean Whispers",       artist: "Marina Flow",   mood: "calm",      bpm: 72  },
+  { title: "Forest Rain",          artist: "Ambient Mind",  mood: "calm",      bpm: 65  },
+  { title: "Midnight Tears",       artist: "Sorrow",        mood: "sad",       bpm: 60  },
+  { title: "Empty Streets",        artist: "Blue Hour",     mood: "sad",       bpm: 68  },
+  { title: "Dance Floor Fire",     artist: "DJ Vortex",     mood: "party",     bpm: 128 },
+  { title: "Saturday Night",       artist: "Club Kids",     mood: "party",     bpm: 124 },
+  { title: "Deep Work",            artist: "Lo-fi Beats",   mood: "focus",     bpm: 80  },
+  { title: "Study Session",        artist: "Chill Hop",     mood: "focus",     bpm: 85  }
+];
+
+function waveform(mood, bpm) {
+  const bars = 20;
+  const heights = [];
+  for (let i = 0; i < bars; i++) {
+    const seed = Math.sin(i * 0.8 + bpm * 0.1) * 0.5 + 0.5;
+    const intensity = mood === 'energetic' || mood === 'party' ? 0.9 : (mood === 'sad' ? 0.3 : 0.5);
+    heights.push(Math.max(3, seed * 28 * intensity));
+  }
+  return heights.map(h => `<span style="height: ${h}px"></span>`).join('');
+}
+
+function moodSearch(mood) {
+  const moodDist = {
+    'energetic': { energetic: 1.0, party: 0.75, focus: 0.3, calm: 0.1, sad: 0.05 },
+    'calm':      { calm: 1.0, focus: 0.7, sad: 0.4, energetic: 0.1, party: 0.05 },
+    'sad':       { sad: 1.0, calm: 0.55, focus: 0.3, energetic: 0.1, party: 0.05 },
+    'party':     { party: 1.0, energetic: 0.8, focus: 0.2, calm: 0.05, sad: 0.05 },
+    'focus':     { focus: 1.0, calm: 0.65, sad: 0.2, energetic: 0.15, party: 0.1 }
+  }[mood];
+
+  return tracks.map(t => ({
+    track: t,
+    score: moodDist[t.mood] + (Math.sin(t.bpm * 0.1) + 1) * 0.03
+  })).sort((a, b) => b.score - a.score).slice(0, 6);
+}
+
+function renderAudio(mood) {
+  const results = moodSearch(mood);
+  const container = document.getElementById('audioResults');
+  container.innerHTML = results.map((r, i) => `
+    <div class="audio-row ${i < 2 ? 'highlight' : ''}">
+      <div class="audio-emoji">${i < 2 ? '🎵' : '🎶'}</div>
+      <div class="audio-info">
+        <div class="title">${r.track.title}</div>
+        <div class="meta">${r.track.artist} · ${r.track.bpm} BPM · ${r.track.mood}</div>
+        <div class="audio-waveform">${waveform(r.track.mood, r.track.bpm)}</div>
+      </div>
+      <div class="audio-score">${r.score.toFixed(2)}</div>
+    </div>
+  `).join('');
+}
+
+document.querySelectorAll('[data-mood]').forEach(c => {
+  c.addEventListener('click', () => renderAudio(c.dataset.mood));
+});
+renderAudio('energetic');
+
+// ═══════════════════════════════════════════════════════════════
+// User/Item recommendations demo
+// ═══════════════════════════════════════════════════════════════
+const userProfiles = {
+  rock: {
+    history: ["Led Zeppelin — Kashmir", "AC/DC — Thunderstruck", "Queen — Bohemian Rhapsody"],
+    recos: [
+      { title: "Deep Purple — Smoke on the Water",  match: 0.94 },
+      { title: "Guns N' Roses — November Rain",     match: 0.91 },
+      { title: "Metallica — Nothing Else Matters",  match: 0.88 },
+      { title: "Pink Floyd — Comfortably Numb",     match: 0.85 },
+      { title: "The Who — Baba O'Riley",            match: 0.82 }
+    ]
+  },
+  electronic: {
+    history: ["Daft Punk — Get Lucky", "Deadmau5 — Strobe", "Aphex Twin — Windowlicker"],
+    recos: [
+      { title: "Justice — D.A.N.C.E.",              match: 0.93 },
+      { title: "Chemical Brothers — Galvanize",     match: 0.90 },
+      { title: "Boards of Canada — Roygbiv",        match: 0.87 },
+      { title: "Bonobo — Kiara",                    match: 0.84 },
+      { title: "Four Tet — Angel Echoes",           match: 0.81 }
+    ]
+  },
+  classical: {
+    history: ["Beethoven — Symphony No. 9", "Bach — Cello Suite No. 1", "Mozart — Requiem"],
+    recos: [
+      { title: "Chopin — Nocturne Op. 9 No. 2",     match: 0.92 },
+      { title: "Debussy — Clair de Lune",           match: 0.89 },
+      { title: "Brahms — Symphony No. 4",           match: 0.87 },
+      { title: "Rachmaninoff — Piano Concerto 2",   match: 0.85 },
+      { title: "Vivaldi — Four Seasons",            match: 0.83 }
+    ]
+  },
+  hiphop: {
+    history: ["Kendrick Lamar — HUMBLE.", "Nas — N.Y. State of Mind", "J. Cole — MIDDLE CHILD"],
+    recos: [
+      { title: "Drake — God's Plan",                match: 0.92 },
+      { title: "Travis Scott — SICKO MODE",         match: 0.90 },
+      { title: "Tyler, The Creator — EARFQUAKE",    match: 0.87 },
+      { title: "Jay-Z — 99 Problems",               match: 0.85 },
+      { title: "A$AP Rocky — L$D",                  match: 0.82 }
+    ]
+  }
+};
+
+function renderUser(userKey) {
+  const profile = userProfiles[userKey];
+  const hist = document.getElementById('userHistory');
+  hist.innerHTML = profile.history.map(h => `<div class="liked">❤️ ${h}</div>`).join('');
+
+  const recos = document.getElementById('recoList');
+  recos.innerHTML = profile.recos.map((r, i) => `
+    <div class="reco-item ${i < 2 ? 'top' : ''}">
+      <div class="reco-rank">#${i + 1}</div>
+      <div class="reco-title">${r.title}</div>
+      <div class="reco-match">${r.match.toFixed(2)}</div>
+    </div>
+  `).join('');
+}
+
+document.querySelectorAll('.user-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.user-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderUser(tab.dataset.user);
+  });
+});
+renderUser('rock');
+</script>
+
+</body>
+</html>

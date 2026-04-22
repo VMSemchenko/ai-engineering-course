@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Similarity Search — пошук релевантного контенту</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: #e2e8f0;
+    line-height: 1.6;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  h1 {
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, #a5b4fc, #f0abfc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+  .subtitle { color: #94a3b8; font-size: 1.1rem; }
+
+  section {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  h2 {
+    color: #c4b5fd;
+    margin-bottom: 1rem;
+    font-size: 1.6rem;
+  }
+  h3 { color: #e9d5ff; margin: 1.5rem 0 0.75rem 0; font-size: 1.2rem; }
+  p { margin-bottom: 1rem; color: #cbd5e1; }
+
+  code {
+    background: rgba(0,0,0,0.4);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.9em;
+    color: #fde68a;
+  }
+
+  .keyword-vs-semantic {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .search-card {
+    background: rgba(0,0,0,0.3);
+    padding: 1.3rem;
+    border-radius: 12px;
+    border-top: 3px solid;
+  }
+  .search-card.keyword { border-color: #64748b; }
+  .search-card.semantic { border-color: #8b5cf6; }
+  .search-card h4 { color: #e9d5ff; margin-bottom: 0.5rem; font-size: 1.1rem; }
+  .search-card .query { color: #fbbf24; font-family: monospace; font-size: 0.9rem; margin: 0.5rem 0; }
+  .search-card .result {
+    background: rgba(0,0,0,0.25);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    margin: 0.35rem 0;
+    font-size: 0.88rem;
+  }
+  .search-card .result.found { border-left: 3px solid #22c55e; }
+  .search-card .result.missed { border-left: 3px solid #ef4444; opacity: 0.6; text-decoration: line-through; }
+
+  .playground {
+    background: rgba(0,0,0,0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .query-input {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+  }
+  .query-input input {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    font-size: 1rem;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-family: inherit;
+  }
+  .query-input input:focus {
+    outline: none;
+    border-color: #c4b5fd;
+    background: rgba(0,0,0,0.7);
+  }
+  .query-input button {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    border: none;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .query-input button:hover { opacity: 0.9; }
+
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .suggest-chip {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    padding: 0.3rem 0.7rem;
+    border-radius: 15px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .suggest-chip:hover {
+    background: rgba(139, 92, 246, 0.3);
+    border-color: #c4b5fd;
+  }
+
+  .results-list {
+    margin-top: 1rem;
+  }
+  .result-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 1rem 1.2rem;
+    border-radius: 10px;
+    margin-bottom: 0.6rem;
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    transition: all 0.3s;
+  }
+  .result-item.top { border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.05); }
+  .rank {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #94a3b8;
+    text-align: center;
+  }
+  .result-item.top .rank { color: #fbbf24; }
+  .doc-title { color: #e9d5ff; font-weight: 500; margin-bottom: 0.2rem; }
+  .doc-text { color: #94a3b8; font-size: 0.88rem; }
+  .score {
+    font-family: monospace;
+    color: #fbbf24;
+    font-weight: 600;
+    text-align: right;
+    min-width: 80px;
+  }
+  .score .score-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-top: 0.3rem;
+    overflow: hidden;
+  }
+  .score .score-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+    transition: width 0.5s;
+  }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+    align-items: stretch;
+  }
+  .pipeline-step {
+    background: rgba(0,0,0,0.3);
+    padding: 1rem 0.8rem;
+    border-radius: 10px;
+    text-align: center;
+    border-top: 3px solid #8b5cf6;
+    position: relative;
+  }
+  .pipeline-step h5 { color: #e9d5ff; font-size: 0.95rem; margin-bottom: 0.3rem; }
+  .pipeline-step p { font-size: 0.78rem; color: #94a3b8; margin: 0; }
+  .pipeline-step .icon { font-size: 1.6rem; margin-bottom: 0.3rem; }
+  .pipeline-step::after {
+    content: '→';
+    position: absolute;
+    right: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #8b5cf6;
+    font-size: 1.3rem;
+    font-weight: 700;
+    z-index: 1;
+  }
+  .pipeline-step:last-child::after { display: none; }
+
+  .use-cases {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .use-case {
+    background: rgba(0,0,0,0.3);
+    padding: 1.2rem;
+    border-radius: 12px;
+    border-left: 4px solid #8b5cf6;
+  }
+  .use-case .emoji { font-size: 2rem; margin-bottom: 0.5rem; }
+  .use-case h4 { color: #e9d5ff; margin-bottom: 0.4rem; }
+  .use-case p { font-size: 0.88rem; margin: 0; }
+
+  .top-k-demo {
+    background: rgba(0,0,0,0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .k-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .k-slider-wrap label {
+    color: #c4b5fd;
+    font-weight: 500;
+    min-width: 100px;
+  }
+  .k-slider-wrap input[type="range"] {
+    flex: 1;
+    accent-color: #8b5cf6;
+  }
+  .k-value {
+    font-family: monospace;
+    color: #fbbf24;
+    font-weight: 700;
+    font-size: 1.2rem;
+    min-width: 30px;
+    text-align: center;
+  }
+
+  .key-fact {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 4px solid #fbbf24;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+  }
+  .key-fact strong { color: #fde68a; }
+
+  .ann-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .ann-card {
+    background: rgba(0,0,0,0.3);
+    padding: 1.2rem;
+    border-radius: 10px;
+  }
+  .ann-card.exact { border-left: 3px solid #22c55e; }
+  .ann-card.approx { border-left: 3px solid #ec4899; }
+  .ann-card h4 { color: #e9d5ff; margin-bottom: 0.5rem; }
+  .ann-card .stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+    font-size: 0.9rem;
+  }
+  .ann-card .stat:last-child { border: none; }
+  .ann-card .stat-key { color: #94a3b8; }
+  .ann-card .stat-val { color: #fbbf24; font-family: monospace; }
+
+  .stats-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+  .stats-bar span { color: #94a3b8; }
+  .stats-bar strong { color: #fbbf24; font-family: monospace; }
+
+  footer {
+    text-align: center;
+    color: #64748b;
+    margin-top: 3rem;
+    padding: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .hybrid-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .method-card {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 1.3rem;
+    border-radius: 12px;
+    border-top: 3px solid;
+  }
+  .method-card.bm25 { border-color: #22c55e; }
+  .method-card.semantic-m { border-color: #8b5cf6; }
+  .method-card.hybrid-m {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(139, 92, 246, 0.08));
+  }
+  .method-card h4 { color: #e9d5ff; margin-bottom: 0.5rem; }
+  .method-card .pros, .method-card .cons {
+    font-size: 0.85rem;
+    margin: 0.4rem 0;
+  }
+  .method-card .pros { color: #86efac; }
+  .method-card .cons { color: #fca5a5; }
+  .method-card .good-for {
+    margin-top: 0.7rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed rgba(255,255,255,0.1);
+    font-size: 0.85rem;
+    color: #cbd5e1;
+  }
+
+  .hybrid-demo {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .hybrid-query-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .hybrid-query-row .suggest-chip { cursor: pointer; }
+
+  .alpha-control {
+    margin: 1.2rem 0;
+    padding: 1rem;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+  }
+  .alpha-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+  .alpha-label .l { color: #22c55e; }
+  .alpha-label .r { color: #8b5cf6; }
+  .alpha-label .center { color: #fbbf24; font-family: monospace; }
+
+  .hybrid-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .hybrid-col h5 {
+    text-align: center;
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+  .hybrid-col.bm25-col h5 { background: rgba(34, 197, 94, 0.15); color: #86efac; }
+  .hybrid-col.semantic-col h5 { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; }
+  .hybrid-col.hybrid-col h5 {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(139, 92, 246, 0.15));
+    color: #fde68a;
+  }
+  .hybrid-result {
+    background: rgba(0,0,0,0.35);
+    padding: 0.5rem 0.7rem;
+    border-radius: 6px;
+    margin-bottom: 0.4rem;
+    font-size: 0.82rem;
+  }
+  .hybrid-result .h-rank {
+    font-family: monospace;
+    font-weight: 700;
+    color: #fbbf24;
+    margin-right: 0.4rem;
+  }
+  .hybrid-result .h-title {
+    color: #e9d5ff;
+    display: block;
+    margin-bottom: 0.2rem;
+    font-weight: 500;
+  }
+  .hybrid-result .h-score {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-family: monospace;
+  }
+  .hybrid-result.in-hybrid { border-left: 2px solid #fbbf24; }
+
+  .formula-simple {
+    background: rgba(0,0,0,0.5);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    text-align: center;
+    font-family: 'Cambria Math', serif;
+    color: #fde68a;
+    margin: 1rem 0;
+    font-size: 1.05rem;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+  }
+
+  .disambiguation {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(236, 72, 153, 0.08));
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .disambiguation h3 { color: #fde68a; margin-top: 0; }
+
+  .two-worlds {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .world-card {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 1.2rem;
+    border-radius: 10px;
+    border-top: 3px solid;
+  }
+  .world-card.search { border-color: #8b5cf6; }
+  .world-card.gen { border-color: #ec4899; }
+  .world-card h4 { color: #e9d5ff; margin-bottom: 0.5rem; }
+  .world-card code {
+    display: block;
+    background: rgba(0,0,0,0.5);
+    padding: 0.6rem;
+    border-radius: 6px;
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
+  }
+
+  .tokens-viz {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .prompt-box {
+    background: rgba(139, 92, 246, 0.1);
+    border-left: 3px solid #8b5cf6;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    color: #e2e8f0;
+    font-style: italic;
+  }
+  .prompt-box .next {
+    color: #fbbf24;
+    font-weight: 700;
+    font-style: normal;
+    background: rgba(251, 191, 36, 0.15);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+  .token-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+  .token-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 100px;
+    gap: 0.8rem;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    transition: all 0.4s;
+  }
+  .token-row.included {
+    background: rgba(34, 197, 94, 0.08);
+    border-left: 3px solid #22c55e;
+  }
+  .token-row.excluded {
+    background: rgba(100, 116, 139, 0.05);
+    border-left: 3px solid rgba(100, 116, 139, 0.3);
+    opacity: 0.45;
+  }
+  .token-text {
+    font-family: 'Monaco', monospace;
+    font-weight: 600;
+    color: #e9d5ff;
+  }
+  .token-row.excluded .token-text { color: #64748b; text-decoration: line-through; }
+  .token-bar-wrap {
+    background: rgba(255,255,255,0.05);
+    height: 22px;
+    border-radius: 11px;
+    overflow: hidden;
+    position: relative;
+  }
+  .token-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+    border-radius: 11px;
+    transition: width 0.5s;
+  }
+  .token-row.excluded .token-bar {
+    background: rgba(100, 116, 139, 0.4);
+  }
+  .token-prob {
+    font-family: monospace;
+    color: #fbbf24;
+    text-align: right;
+    font-size: 0.9rem;
+  }
+  .token-row.excluded .token-prob { color: #64748b; }
+
+  .sampling-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .sampling-controls .k-slider-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+  .sampling-controls label {
+    color: #c4b5fd;
+    font-weight: 500;
+    min-width: auto;
+    display: flex;
+    justify-content: space-between;
+  }
+  .mode-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .mode-tab {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  .mode-tab.active {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    color: white;
+    border-color: transparent;
+  }
+  .sampling-summary {
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    background: rgba(0,0,0,0.35);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+  }
+  .sampling-summary strong { color: #fbbf24; }
+
+  @media (max-width: 720px) {
+    .two-worlds { grid-template-columns: 1fr; }
+    .sampling-controls { grid-template-columns: 1fr; }
+    .token-row { grid-template-columns: 100px 1fr 70px; font-size: 0.85rem; }
+    body { padding: 1rem; }
+    h1 { font-size: 1.8rem; }
+    .keyword-vs-semantic, .ann-compare { grid-template-columns: 1fr; }
+    .pipeline { grid-template-columns: 1fr; }
+    .pipeline-step::after {
+      content: '↓';
+      right: 50%;
+      top: auto;
+      bottom: -18px;
+      transform: translateX(50%);
+    }
+    .result-item { grid-template-columns: 30px 1fr; }
+    .result-item .score { grid-column: 2; text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🔎 Similarity Search</h1>
+    <p class="subtitle">Як знаходити релевантний контент за змістом, а не за ключовими словами</p>
+  </header>
+
+  <section>
+    <h2>🎯 Навіщо це потрібно</h2>
+    <p>
+      Класичний пошук (<code>LIKE '%кіт%'</code>, Elasticsearch на ключових словах) шукає
+      збіги <strong>за літерами</strong>. А користувач думає <strong>за змістом</strong>.
+      Запит «як доглядати за котеням» не знайде статтю «Годування маленьких кошенят» —
+      бо слова різні, хоч зміст майже ідентичний.
+    </p>
+
+    <div class="keyword-vs-semantic">
+      <div class="search-card keyword">
+        <h4>🔤 Keyword search</h4>
+        <div class="query">query: "як доглядати за котеням"</div>
+        <div class="result missed">Годування маленьких кошенят</div>
+        <div class="result missed">Поради новим власникам котів</div>
+        <div class="result found">Як доглядати за котеням — FAQ</div>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
+          Знаходить тільки документ із тими самими словами. Пропускає синоніми та перефразування.
+        </p>
+      </div>
+      <div class="search-card semantic">
+        <h4>🧠 Semantic (similarity) search</h4>
+        <div class="query">query: "як доглядати за котеням"</div>
+        <div class="result found">Годування маленьких кошенят</div>
+        <div class="result found">Поради новим власникам котів</div>
+        <div class="result found">Як доглядати за котеням — FAQ</div>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
+          Знаходить за змістом — синоніми, перефразування, навіть іншими мовами.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>⚙️ Як це працює — pipeline</h2>
+    <p>
+      Similarity search = <strong>embedding + порівняння векторів</strong>. Всі документи заздалегідь
+      перетворюються у вектори та зберігаються у <em>vector DB</em>. При запиті:
+    </p>
+
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="icon">💬</div>
+        <h5>1. Query</h5>
+        <p>Текст запиту користувача</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="icon">🧬</div>
+        <h5>2. Embed</h5>
+        <p>Перетворюємо запит у вектор</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="icon">📐</div>
+        <h5>3. Compare</h5>
+        <p>Рахуємо cosine similarity до всіх документів</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="icon">🏆</div>
+        <h5>4. Rank</h5>
+        <p>Сортуємо за схожістю</p>
+      </div>
+      <div class="pipeline-step">
+        <div class="icon">📤</div>
+        <h5>5. Top-K</h5>
+        <p>Повертаємо K найрелевантніших</p>
+      </div>
+    </div>
+
+    <div class="key-fact">
+      <strong>Важливо:</strong> документи ембедяться <em>один раз</em> (індексація), а запит —
+      при кожному пошуку. Тому пошук швидкий навіть на мільйонах документів.
+    </div>
+  </section>
+
+  <section>
+    <h2>🧪 Інтерактивний пошук</h2>
+    <p>
+      Спробуй сам: введи запит або обери готовий. Пошук іде по 15 документам на різні теми.
+      Схожість рахується за імітацією embeddings (у реальності це робить модель типу
+      <code>text-embedding-3-small</code>).
+    </p>
+
+    <div class="playground">
+      <div class="query-input">
+        <input type="text" id="queryInput" placeholder="Введи запит, напр. 'як навчити собаку'..." />
+        <button id="searchBtn">🔎 Шукати</button>
+      </div>
+
+      <div class="suggestions">
+        <span class="suggest-chip" data-q="як доглядати за котеням">як доглядати за котеням</span>
+        <span class="suggest-chip" data-q="найкращий рецепт борщу">найкращий рецепт борщу</span>
+        <span class="suggest-chip" data-q="як навчити собаку командам">як навчити собаку командам</span>
+        <span class="suggest-chip" data-q="ремонт машини своїми руками">ремонт машини своїми руками</span>
+        <span class="suggest-chip" data-q="тренування для набору м'язів">тренування для набору м'язів</span>
+        <span class="suggest-chip" data-q="як медитувати новачку">як медитувати новачку</span>
+      </div>
+
+      <div class="top-k-demo">
+        <div class="k-slider-wrap">
+          <label>Top-K:</label>
+          <input type="range" id="kSlider" min="1" max="10" value="5">
+          <span class="k-value" id="kVal">5</span>
+        </div>
+        <p style="font-size: 0.85rem; margin: 0; color: #94a3b8;">
+          Скільки найрелевантніших документів повертати. Менше → точніше; більше → ширший контекст для RAG.
+        </p>
+      </div>
+
+      <div class="results-list" id="results"></div>
+
+      <div class="stats-bar" id="stats">
+        <span>Документів у базі: <strong id="totalDocs">15</strong></span>
+        <span>Час пошуку: <strong id="searchTime">—</strong></span>
+        <span>Найкращий score: <strong id="bestScore">—</strong></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>🎲 Top-K і Top-P: два різних світи</h2>
+
+    <div class="disambiguation">
+      <h3>⚠️ Обережно з термінологією</h3>
+      <p>
+        «Top-K» трапляється у <strong>двох різних контекстах</strong>, і їх легко сплутати.
+        Це не одне й те саме:
+      </p>
+
+      <div class="two-worlds">
+        <div class="world-card search">
+          <h4>🔎 Top-K у similarity search</h4>
+          <p>Скільки <strong>документів</strong> повертати з vector DB після ранжування за схожістю.</p>
+          <code>db.search(vector, top_k=5)</code>
+          <p style="font-size: 0.85rem; margin: 0;">Це те, що ми показували у секції вище — 5 найближчих сусідів.</p>
+        </div>
+        <div class="world-card gen">
+          <h4>🤖 Top-K / Top-P у LLM generation</h4>
+          <p>Як модель обирає наступний <strong>токен</strong> при генерації відповіді.</p>
+          <code>llm.generate(prompt, top_k=40, top_p=0.9)</code>
+          <p style="font-size: 0.85rem; margin: 0;">Керує «випадковістю» виводу разом з <code>temperature</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>Як LLM обирає наступний токен</h3>
+    <p>
+      На кожному кроці LLM видає розподіл імовірностей по всьому словнику (50K+ токенів).
+      Далі потрібно <em>обрати один</em> — і тут є варіанти:
+    </p>
+
+    <ul style="padding-left: 1.5rem; color: #cbd5e1; margin-bottom: 1rem;">
+      <li><strong>Greedy</strong> — завжди найімовірніший токен (детерміновано, але нудно)</li>
+      <li><strong>Top-K</strong> — залишаємо тільки K найімовірніших, семплимо з них</li>
+      <li><strong>Top-P (nucleus)</strong> — залишаємо найменший набір токенів, сума ймовірностей яких ≥ P</li>
+      <li><strong>Top-K + Top-P разом</strong> — спочатку обрізаємо по K, потім по P (типово у production)</li>
+    </ul>
+
+    <div class="tokens-viz">
+      <div class="prompt-box">
+        Prompt: «Найкращий напій зранку — це <span class="next">?</span>»
+      </div>
+
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="greedy">Greedy</button>
+        <button class="mode-tab" data-mode="topk">Top-K</button>
+        <button class="mode-tab" data-mode="topp">Top-P (nucleus)</button>
+        <button class="mode-tab" data-mode="both">Top-K + Top-P</button>
+      </div>
+
+      <div class="sampling-controls">
+        <div class="k-slider-wrap">
+          <label><span>Top-K</span><span id="kGenVal">5</span></label>
+          <input type="range" id="kGen" min="1" max="10" value="5">
+        </div>
+        <div class="k-slider-wrap">
+          <label><span>Top-P</span><span id="pGenVal">0.90</span></label>
+          <input type="range" id="pGen" min="10" max="100" value="90">
+        </div>
+        <div class="k-slider-wrap">
+          <label><span>Temperature</span><span id="tempVal">1.00</span></label>
+          <input type="range" id="tempGen" min="10" max="200" value="100">
+        </div>
+      </div>
+
+      <div class="token-bars" id="tokenBars"></div>
+
+      <div class="sampling-summary" id="samplingSummary"></div>
+    </div>
+
+    <h3>🧭 Як обирати параметри</h3>
+    <div class="use-cases">
+      <div class="use-case">
+        <div class="emoji">🎯</div>
+        <h4>Точні задачі</h4>
+        <p><code>temperature=0</code> (greedy). Класифікація, extraction, код — коли потрібен детермінований вивід.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">💬</div>
+        <h4>Діалог, chat</h4>
+        <p><code>temperature=0.7, top_p=0.9</code>. Баланс між різноманітністю та адекватністю.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">✍️</div>
+        <h4>Творчість</h4>
+        <p><code>temperature=1.0+, top_p=0.95</code>. Генерація історій, ідей, brainstorming.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">⚙️</div>
+        <h4>Typical production</h4>
+        <p>Встановлюють обидва: <code>top_k=40</code> як «запобіжник» від совсім випадкових токенів + <code>top_p=0.9</code> для адаптивного відсікання хвоста.</p>
+      </div>
+    </div>
+
+    <div class="key-fact">
+      <strong>Головна відмінність K vs P:</strong> top-K бере <em>фіксовану кількість</em>
+      (завжди рівно K кандидатів), а top-P <em>адаптивний</em> — може залишити 2 токени,
+      якщо модель впевнена, або 50, якщо розподіл «розмазаний». Саме тому top-P часто
+      дає природніший результат.
+    </div>
+  </section>
+
+  <section>
+    <h2>🔀 Hybrid Search: BM25 + Semantic</h2>
+    <p>
+      Semantic search крутий, але у нього є слабкі місця:
+      <strong>рідкісні терміни, артикули товарів, імена, коди помилок</strong>. Embeddings
+      їх «розмивають». А класичний keyword-пошук (BM25) — навпаки, ідеально ловить точні збіги,
+      але губить сенс.
+    </p>
+    <p>
+      <strong>Hybrid search</strong> поєднує обидва підходи: шукає і за ключовими словами,
+      і за семантикою, а потім об'єднує результати. Це <em>стандарт для production RAG</em>
+      у 2025 році.
+    </p>
+
+    <h3>Два гравці</h3>
+
+    <div class="hybrid-grid">
+      <div class="method-card bm25">
+        <h4>🔤 BM25 (keyword)</h4>
+        <p style="font-size: 0.9rem;">«Best Matching 25» — покращена версія TF-IDF. Враховує частоту термінів у документі та рідкість у всій колекції.</p>
+        <div class="pros">✓ Точні збіги: артикули, ID, коди</div>
+        <div class="pros">✓ Рідкісні/технічні терміни</div>
+        <div class="pros">✓ Швидкий, легко масштабується</div>
+        <div class="cons">✗ Не розуміє синонімів</div>
+        <div class="cons">✗ Не враховує контекст</div>
+        <div class="good-for">Elasticsearch, OpenSearch, Lucene</div>
+      </div>
+
+      <div class="method-card semantic-m">
+        <h4>🧠 Semantic (dense)</h4>
+        <p style="font-size: 0.9rem;">Векторний пошук через embeddings + cosine similarity. Порівнює <em>зміст</em>, а не слова.</p>
+        <div class="pros">✓ Синоніми, перефразування</div>
+        <div class="pros">✓ Крос-мовний пошук</div>
+        <div class="pros">✓ Розуміє контекст</div>
+        <div class="cons">✗ Губить рідкісні терміни</div>
+        <div class="cons">✗ Плутає схожі, але різні поняття</div>
+        <div class="good-for">Pinecone, Qdrant, Weaviate, pgvector</div>
+      </div>
+
+      <div class="method-card hybrid-m">
+        <h4>🔀 Hybrid (BM25 + Semantic)</h4>
+        <p style="font-size: 0.9rem;">Запускаємо обидва пошуки паралельно, об'єднуємо результати за зваженою формулою або RRF.</p>
+        <div class="pros">✓ Точність BM25 + розуміння semantic</div>
+        <div class="pros">✓ Стабільний на будь-яких запитах</div>
+        <div class="pros">✓ Найкращий recall для RAG</div>
+        <div class="cons">✗ Складніша інфраструктура</div>
+        <div class="cons">✗ Потрібно тюнити вагу α</div>
+        <div class="good-for">Weaviate, Qdrant, Elastic+vector</div>
+      </div>
+    </div>
+
+    <h3>Як об'єднують результати</h3>
+    <p>Є два популярні способи:</p>
+
+    <p><strong>1. Weighted score (alpha-blend)</strong> — нормалізуємо обидва скори до [0,1] і змішуємо:</p>
+    <div class="formula-simple">
+      score<sub>hybrid</sub> = α × score<sub>semantic</sub> + (1 − α) × score<sub>BM25</sub>
+    </div>
+    <p style="font-size: 0.9rem;">
+      <code>α = 0</code> → чистий BM25 · <code>α = 1</code> → чистий semantic · <code>α = 0.5</code> → 50/50.
+      Типово беруть <code>α ≈ 0.5–0.7</code>.
+    </p>
+
+    <p><strong>2. Reciprocal Rank Fusion (RRF)</strong> — не дивимось на скори взагалі, тільки на ранги:</p>
+    <div class="formula-simple">
+      RRF(d) = Σ 1 / (k + rank<sub>i</sub>(d)) &nbsp; · &nbsp; типово k = 60
+    </div>
+    <p style="font-size: 0.9rem;">
+      Документ, який потрапив у топ-3 обох пошуків, отримує високий RRF. Перевага — не
+      треба нормалізувати скори (BM25 може давати 0–30, а cosine — 0–1).
+    </p>
+
+    <h3>🧪 Порівняй сам: BM25 vs Semantic vs Hybrid</h3>
+    <p>Введи запит і дивись, як три алгоритми по-різному ранжують ті самі документи:</p>
+
+    <div class="hybrid-demo">
+      <div class="hybrid-query-row">
+        <span class="suggest-chip" data-hq="error 500 api">error 500 api</span>
+        <span class="suggest-chip" data-hq="як навчити собаку">як навчити собаку</span>
+        <span class="suggest-chip" data-hq="iPhone 15 Pro Max">iPhone 15 Pro Max</span>
+        <span class="suggest-chip" data-hq="рецепт страви з м'ясом">рецепт страви з м'ясом</span>
+        <span class="suggest-chip" data-hq="SKU-4471">SKU-4471</span>
+      </div>
+
+      <div class="query-input">
+        <input type="text" id="hybridQuery" placeholder="Свій запит..." value="як навчити собаку">
+        <button id="hybridBtn">🔎 Порівняти</button>
+      </div>
+
+      <div class="alpha-control">
+        <div class="alpha-label">
+          <span class="l">← BM25 (keyword)</span>
+          <span class="center">α = <span id="alphaVal">0.50</span></span>
+          <span class="r">Semantic →</span>
+        </div>
+        <input type="range" id="alphaSlider" min="0" max="100" value="50" style="width: 100%; accent-color: #fbbf24;">
+      </div>
+
+      <div class="hybrid-columns">
+        <div class="hybrid-col bm25-col">
+          <h5>🔤 BM25</h5>
+          <div id="bm25Results"></div>
+        </div>
+        <div class="hybrid-col semantic-col">
+          <h5>🧠 Semantic</h5>
+          <div id="semanticResults"></div>
+        </div>
+        <div class="hybrid-col hybrid-col">
+          <h5>🔀 Hybrid (α-blend)</h5>
+          <div id="hybridResults"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="key-fact">
+      <strong>Практична порада:</strong> майже всі серйозні RAG-системи 2024–2025 використовують
+      саме hybrid — bare semantic search дає на 10–30% гірший recall на реальних запитах
+      (особливо з абревіатурами, номерами, іменами). Weaviate, Qdrant, Elastic і Pinecone
+      всі мають hybrid з коробки.
+    </div>
+  </section>
+
+  <section>
+    <h2>🚀 Exact vs Approximate Nearest Neighbors (ANN)</h2>
+    <p>
+      Коли документів мало — можна порівняти запит з <em>усіма</em> векторами (brute force).
+      Але на мільйонах векторів це занадто повільно. Тому у production використовують
+      <strong>ANN-алгоритми</strong> (HNSW, IVF, ScaNN), які жертвують крихтою точності
+      заради швидкості.
+    </p>
+
+    <div class="ann-compare">
+      <div class="ann-card exact">
+        <h4>🎯 Exact Search (brute force)</h4>
+        <div class="stat"><span class="stat-key">Точність</span><span class="stat-val">100%</span></div>
+        <div class="stat"><span class="stat-key">Складність</span><span class="stat-val">O(N × D)</span></div>
+        <div class="stat"><span class="stat-key">На 1M векторів</span><span class="stat-val">~сотні мс</span></div>
+        <div class="stat"><span class="stat-key">Коли</span><span class="stat-val">до ~100K</span></div>
+      </div>
+      <div class="ann-card approx">
+        <h4>⚡ ANN (HNSW, IVF)</h4>
+        <div class="stat"><span class="stat-key">Точність (recall)</span><span class="stat-val">~95-99%</span></div>
+        <div class="stat"><span class="stat-key">Складність</span><span class="stat-val">O(log N)</span></div>
+        <div class="stat"><span class="stat-key">На 1M векторів</span><span class="stat-val">~1-10 мс</span></div>
+        <div class="stat"><span class="stat-key">Коли</span><span class="stat-val">100K+</span></div>
+      </div>
+    </div>
+
+    <div class="key-fact">
+      <strong>Популярні vector DB:</strong> Pinecone, Qdrant, Weaviate, Milvus, pgvector (для Postgres),
+      Chroma. Усі вони використовують ANN під капотом — ти просто викликаєш
+      <code>.search(vector, top_k=5)</code>.
+    </div>
+  </section>
+
+  <section>
+    <h2>💡 Де застосовують similarity search</h2>
+
+    <div class="use-cases">
+      <div class="use-case">
+        <div class="emoji">🤖</div>
+        <h4>RAG-системи</h4>
+        <p>Знаходимо релевантні чанки з бази знань та даємо їх LLM як контекст. Основа ChatGPT-like асистентів на власних даних.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">🔍</div>
+        <h4>Семантичний пошук</h4>
+        <p>Пошук по документах, код-базі, FAQ за змістом. Notion, Linear, Slack — всі використовують.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">🎬</div>
+        <h4>Рекомендації</h4>
+        <p>«Схоже на те, що ти дивився». Netflix, Spotify, YouTube — embeddings + similarity.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">🖼️</div>
+        <h4>Пошук зображень</h4>
+        <p>Image embeddings (CLIP) → знаходь фото за текстовим описом або схожі картинки.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">🛒</div>
+        <h4>E-commerce</h4>
+        <p>«Схожі товари», пошук по фото, кластеризація відгуків клієнтів.</p>
+      </div>
+      <div class="use-case">
+        <div class="emoji">🚨</div>
+        <h4>Детекція дублікатів</h4>
+        <p>Знаходимо майже-дублікати статей, заявок, тікетів, коду — навіть якщо перефразовано.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>AI Engineering Course · Заняття 7 · Embeddings &amp; Semantic Systems</p>
+  </footer>
+
+</div>
+
+<script>
+const documents = [
+  { id: 1, title: "Як привчити кошеня до лотка", text: "Поради для нових власників кошенят щодо гігієни", topics: ["кіт", "кошеня", "тварина", "догляд", "вихання", "лоток"] },
+  { id: 2, title: "Годування маленьких кошенят", text: "Чим годувати кота у перші місяці життя", topics: ["кіт", "кошеня", "тварина", "догляд", "їжа", "годування"] },
+  { id: 3, title: "Дресування собаки: базові команди", text: "Сидіти, лежати, поруч — навчаємо щеня", topics: ["собака", "щеня", "тварина", "дресура", "команда", "навчання"] },
+  { id: 4, title: "Як вигулювати пса правильно", text: "Скільки разів на день виводити собаку на прогулянку", topics: ["собака", "тварина", "догляд", "прогулянка"] },
+  { id: 5, title: "Класичний рецепт українського борщу", text: "Покроковий рецепт червоного борщу з салом", topics: ["їжа", "рецепт", "борщ", "кухня", "українська"] },
+  { id: 6, title: "Як приготувати вареники з картоплею", text: "Домашній рецепт вареників, тісто та начинка", topics: ["їжа", "рецепт", "вареники", "кухня", "українська"] },
+  { id: 7, title: "Тренування у залі для набору маси", text: "Програма силових вправ для росту м'язів", topics: ["спорт", "фітнес", "тренування", "м'язи", "зал"] },
+  { id: 8, title: "Біг зранку: з чого почати", text: "Як правильно починати бігати новачку", topics: ["спорт", "фітнес", "тренування", "біг", "здоров'я"] },
+  { id: 9, title: "Ремонт двигуна авто своїми руками", text: "Діагностика поломок двигуна автомобіля", topics: ["машина", "авто", "ремонт", "двигун", "механіка"] },
+  { id: 10, title: "Заміна гальмівних колодок", text: "Як замінити колодки на машині самостійно", topics: ["машина", "авто", "ремонт", "гальма", "механіка"] },
+  { id: 11, title: "Медитація для початківців", text: "Як почати медитувати вдома за 10 хвилин на день", topics: ["медитація", "спокій", "психологія", "здоров'я", "практика", "новачок"] },
+  { id: 12, title: "Дихальні практики для зняття стресу", text: "Техніки глибокого дихання проти тривоги", topics: ["медитація", "спокій", "психологія", "здоров'я", "дихання", "стрес"] },
+  { id: 13, title: "Основи Python для початківців", text: "Вступ до мови програмування Python", topics: ["програмування", "python", "код", "навчання", "новачок"] },
+  { id: 14, title: "Як написати перший REST API", text: "Створюємо API на Flask з нуля", topics: ["програмування", "python", "код", "api", "backend"] },
+  { id: 15, title: "Вивчення англійської з нуля", text: "План вивчення англійської мови для дорослих", topics: ["мова", "навчання", "англійська", "новачок"] }
+];
+
+const synonyms = {
+  "кіт": ["кошеня", "котик", "котенятко", "cat", "kitty"],
+  "собака": ["пес", "щеня", "цуценя", "песик", "dog", "puppy"],
+  "машина": ["авто", "автомобіль", "car"],
+  "їжа": ["рецепт", "готувати", "кухня", "food", "cook"],
+  "спорт": ["фітнес", "тренування", "зал", "вправи"],
+  "м'язи": ["мускули", "маса", "сила"],
+  "доглядати": ["догляд", "вихання", "турбота"],
+  "навчити": ["дресура", "навчання", "тренувати"],
+  "новачок": ["початківець", "з нуля", "для початківців"],
+  "медитувати": ["медитація", "спокій", "дихання", "релакс"],
+  "програмування": ["код", "python", "розробка"]
+};
+
+function tokenize(text) {
+  return text.toLowerCase()
+    .replace(/[^\p{L}\s']/gu, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 2);
+}
+
+function expandWithSynonyms(tokens) {
+  const expanded = new Set(tokens);
+  tokens.forEach(t => {
+    Object.entries(synonyms).forEach(([key, syns]) => {
+      if (t === key || syns.includes(t)) {
+        expanded.add(key);
+        syns.forEach(s => expanded.add(s));
+      }
+    });
+  });
+  return Array.from(expanded);
+}
+
+function calcSimilarity(queryTokens, doc) {
+  const queryExpanded = expandWithSynonyms(queryTokens);
+  const docTokens = [
+    ...tokenize(doc.title),
+    ...tokenize(doc.text),
+    ...doc.topics
+  ];
+  const docSet = new Set(docTokens);
+  const docExpanded = expandWithSynonyms(Array.from(docSet));
+
+  let matches = 0;
+  queryExpanded.forEach(qt => {
+    if (docExpanded.includes(qt)) matches++;
+  });
+
+  const unionSize = new Set([...queryExpanded, ...docExpanded]).size;
+  const base = matches / Math.sqrt(queryExpanded.length * docExpanded.length);
+
+  const noise = (Math.sin(doc.id * 7.3) + 1) * 0.03;
+  return Math.min(0.99, Math.max(0.05, base * 1.8 + noise));
+}
+
+function search(query, k) {
+  const start = performance.now();
+  const tokens = tokenize(query);
+  if (tokens.length === 0) return { results: [], time: 0 };
+
+  const scored = documents.map(doc => ({
+    doc,
+    score: calcSimilarity(tokens, doc)
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+  const time = performance.now() - start;
+
+  return { results: scored.slice(0, k), time };
+}
+
+function renderResults(query, k) {
+  const { results, time } = search(query, k);
+  const container = document.getElementById('results');
+
+  if (results.length === 0) {
+    container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 2rem;">Введи запит, щоб побачити результати</p>';
+    document.getElementById('searchTime').textContent = '—';
+    document.getElementById('bestScore').textContent = '—';
+    return;
+  }
+
+  container.innerHTML = results.map((r, i) => `
+    <div class="result-item ${i === 0 ? 'top' : ''}">
+      <div class="rank">#${i + 1}</div>
+      <div>
+        <div class="doc-title">${r.doc.title}</div>
+        <div class="doc-text">${r.doc.text}</div>
+      </div>
+      <div class="score">
+        ${r.score.toFixed(3)}
+        <div class="score-bar"><div class="score-bar-fill" style="width: ${r.score * 100}%"></div></div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('searchTime').textContent = time.toFixed(2) + ' мс';
+  document.getElementById('bestScore').textContent = results[0].score.toFixed(3);
+}
+
+const queryInput = document.getElementById('queryInput');
+const searchBtn = document.getElementById('searchBtn');
+const kSlider = document.getElementById('kSlider');
+const kVal = document.getElementById('kVal');
+
+function doSearch() {
+  const q = queryInput.value.trim();
+  const k = parseInt(kSlider.value);
+  if (q) renderResults(q, k);
+}
+
+searchBtn.addEventListener('click', doSearch);
+queryInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+queryInput.addEventListener('input', () => {
+  if (queryInput.value.trim().length > 2) doSearch();
+});
+
+kSlider.addEventListener('input', () => {
+  kVal.textContent = kSlider.value;
+  if (queryInput.value.trim()) doSearch();
+});
+
+document.querySelectorAll('.suggest-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    queryInput.value = chip.dataset.q;
+    doSearch();
+  });
+});
+
+queryInput.value = 'як доглядати за котеням';
+doSearch();
+
+// ═══════════════════════════════════════════════════════════════
+// Top-K / Top-P sampling demo (LLM generation)
+// ═══════════════════════════════════════════════════════════════
+const baseTokens = [
+  { text: "кава",     logit: 4.5 },
+  { text: "чай",      logit: 3.8 },
+  { text: "вода",     logit: 3.2 },
+  { text: "сік",      logit: 2.4 },
+  { text: "молоко",   logit: 2.0 },
+  { text: "какао",    logit: 1.5 },
+  { text: "смузі",    logit: 1.0 },
+  { text: "кефір",    logit: 0.5 },
+  { text: "компот",   logit: 0.2 },
+  { text: "пиво",     logit: -0.3 },
+];
+
+function softmax(values, temperature) {
+  const t = Math.max(0.01, temperature);
+  const scaled = values.map(v => v / t);
+  const max = Math.max(...scaled);
+  const exps = scaled.map(v => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
+}
+
+let currentMode = 'greedy';
+const kGen = document.getElementById('kGen');
+const pGen = document.getElementById('pGen');
+const tempGen = document.getElementById('tempGen');
+const kGenVal = document.getElementById('kGenVal');
+const pGenVal = document.getElementById('pGenVal');
+const tempVal = document.getElementById('tempVal');
+const tokenBars = document.getElementById('tokenBars');
+const samplingSummary = document.getElementById('samplingSummary');
+
+function computeKeepSet(probs, mode, k, p) {
+  const indexed = probs.map((prob, i) => ({ prob, i })).sort((a, b) => b.prob - a.prob);
+  const keep = new Set();
+
+  if (mode === 'greedy') {
+    keep.add(indexed[0].i);
+  } else if (mode === 'topk') {
+    indexed.slice(0, k).forEach(x => keep.add(x.i));
+  } else if (mode === 'topp') {
+    let cum = 0;
+    for (const x of indexed) {
+      keep.add(x.i);
+      cum += x.prob;
+      if (cum >= p) break;
+    }
+  } else if (mode === 'both') {
+    const topK = indexed.slice(0, k);
+    let cum = 0;
+    for (const x of topK) {
+      keep.add(x.i);
+      cum += x.prob;
+      if (cum >= p) break;
+    }
+  }
+  return keep;
+}
+
+function renderSampling() {
+  const k = parseInt(kGen.value);
+  const p = parseInt(pGen.value) / 100;
+  const temp = parseInt(tempGen.value) / 100;
+
+  kGenVal.textContent = k;
+  pGenVal.textContent = p.toFixed(2);
+  tempVal.textContent = temp.toFixed(2);
+
+  const probs = softmax(baseTokens.map(t => t.logit), temp);
+  const keep = computeKeepSet(probs, currentMode, k, p);
+
+  const html = baseTokens.map((tok, i) => {
+    const prob = probs[i];
+    const included = keep.has(i);
+    const pct = Math.max(2, prob * 100);
+    return `
+      <div class="token-row ${included ? 'included' : 'excluded'}">
+        <div class="token-text">"${tok.text}"</div>
+        <div class="token-bar-wrap"><div class="token-bar" style="width: ${pct}%"></div></div>
+        <div class="token-prob">${(prob * 100).toFixed(1)}%</div>
+      </div>
+    `;
+  }).join('');
+  tokenBars.innerHTML = html;
+
+  const keptCount = keep.size;
+  const keptMass = Array.from(keep).reduce((s, i) => s + probs[i], 0);
+
+  let explanation = '';
+  if (currentMode === 'greedy') {
+    explanation = `<strong>Greedy:</strong> завжди беремо токен №1 («${baseTokens[0].text}»). Детерміновано, але однакові відповіді на однакові запити.`;
+  } else if (currentMode === 'topk') {
+    explanation = `<strong>Top-K=${k}:</strong> залишили <strong>${keptCount}</strong> найімовірніших токенів. Сума їх ймовірностей: <strong>${(keptMass * 100).toFixed(1)}%</strong>. Далі робимо випадковий вибір пропорційно ймовірності серед них.`;
+  } else if (currentMode === 'topp') {
+    explanation = `<strong>Top-P=${p.toFixed(2)}:</strong> залишили <strong>${keptCount}</strong> токенів — мінімальний набір, чия сума ймовірностей ≥ ${(p*100).toFixed(0)}%. Фактична маса: <strong>${(keptMass*100).toFixed(1)}%</strong>. Адаптивний розмір — залежить від «впевненості» моделі.`;
+  } else if (currentMode === 'both') {
+    explanation = `<strong>Top-K=${k} + Top-P=${p.toFixed(2)}:</strong> спочатку взяли ${k} найкращих, потім обрізали за cumulative prob. Залишили <strong>${keptCount}</strong> токенів (маса <strong>${(keptMass*100).toFixed(1)}%</strong>). Типова production-конфігурація.`;
+  }
+  samplingSummary.innerHTML = explanation;
+}
+
+document.querySelectorAll('.mode-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    renderSampling();
+  });
+});
+
+[kGen, pGen, tempGen].forEach(el => el.addEventListener('input', renderSampling));
+
+renderSampling();
+
+// ═══════════════════════════════════════════════════════════════
+// Hybrid search demo (BM25 vs Semantic vs Hybrid)
+// ═══════════════════════════════════════════════════════════════
+const hybridDocs = [
+  { id: 1, title: "Як привчити кошеня до лотка", text: "Поради для власників кошенят, навчання гігієні", topics: ["кіт","кошеня","тварина","догляд","навчання"] },
+  { id: 2, title: "Дресування собаки: базові команди", text: "Як навчити щеня командам сидіти лежати поруч", topics: ["собака","щеня","навчання","дресура","команда"] },
+  { id: 3, title: "Як виховати слухняного пса", text: "Поради з виховання щеняти у перші місяці", topics: ["собака","пес","щеня","виховання","догляд"] },
+  { id: 4, title: "Рецепт борщу з яловичиною", text: "Класичний рецепт страви з м'ясом яловичини", topics: ["їжа","рецепт","борщ","м'ясо","страва"] },
+  { id: 5, title: "Курка в сметані — рецепт", text: "Смачна страва з курячого м'яса у сметанному соусі", topics: ["їжа","рецепт","курка","м'ясо","страва"] },
+  { id: 6, title: "Помилка HTTP 500 у REST API", text: "Діагностика error 500 internal server error у бекенд API", topics: ["api","error","500","backend","помилка"] },
+  { id: 7, title: "Розбір помилок бекенду", text: "Типові помилки серверних додатків та debugging", topics: ["backend","помилка","debug","сервер"] },
+  { id: 8, title: "Огляд iPhone 15 Pro Max", text: "Детальний огляд нового iPhone 15 Pro Max від Apple", topics: ["apple","iphone","телефон","огляд","15","pro"] },
+  { id: 9, title: "Смартфон року — порівняння", text: "Порівняння найкращих флагманських смартфонів 2024", topics: ["смартфон","телефон","огляд","порівняння"] },
+  { id: 10, title: "Товар SKU-4471: опис", text: "Технічні характеристики артикулу SKU-4471", topics: ["товар","sku","артикул","опис"] },
+  { id: 11, title: "Каталог товарів електроніки", text: "Повний каталог смартфонів ноутбуків аксесуарів", topics: ["товар","каталог","електроніка"] }
+];
+
+function tokenizeH(t) {
+  return t.toLowerCase().replace(/[^\p{L}\p{N}\s'-]/gu, ' ').split(/\s+/).filter(x => x.length > 1);
+}
+
+function bm25Score(queryTokens, doc, avgLen, N, df) {
+  const k1 = 1.5, b = 0.75;
+  const docTokens = [...tokenizeH(doc.title), ...tokenizeH(doc.text)];
+  const docLen = docTokens.length;
+  const tf = {};
+  docTokens.forEach(t => { tf[t] = (tf[t] || 0) + 1; });
+
+  let score = 0;
+  queryTokens.forEach(qt => {
+    const f = tf[qt] || 0;
+    if (f === 0) return;
+    const n = df[qt] || 0.5;
+    const idf = Math.log((N - n + 0.5) / (n + 0.5) + 1);
+    const norm = f * (k1 + 1) / (f + k1 * (1 - b + b * docLen / avgLen));
+    score += idf * norm;
+  });
+  return score;
+}
+
+function semanticScoreH(queryTokens, doc) {
+  const qExp = expandWithSynonyms(queryTokens);
+  const dt = [...tokenizeH(doc.title), ...tokenizeH(doc.text), ...doc.topics];
+  const dExp = expandWithSynonyms(Array.from(new Set(dt)));
+  let matches = 0;
+  qExp.forEach(q => { if (dExp.includes(q)) matches++; });
+  const base = matches / Math.sqrt(qExp.length * dExp.length);
+  const noise = (Math.sin(doc.id * 5.7) + 1) * 0.02;
+  return Math.min(0.99, Math.max(0.02, base * 1.6 + noise));
+}
+
+function normalize(scores) {
+  const max = Math.max(...scores, 0.0001);
+  return scores.map(s => s / max);
+}
+
+function runHybrid(query, alpha) {
+  const qTokens = tokenizeH(query);
+  if (qTokens.length === 0) return { bm25: [], semantic: [], hybrid: [] };
+
+  const N = hybridDocs.length;
+  const avgLen = hybridDocs.reduce((s, d) => s + tokenizeH(d.title + ' ' + d.text).length, 0) / N;
+
+  const df = {};
+  hybridDocs.forEach(d => {
+    const unique = new Set([...tokenizeH(d.title), ...tokenizeH(d.text)]);
+    unique.forEach(t => { df[t] = (df[t] || 0) + 1; });
+  });
+
+  const bm25Raw = hybridDocs.map(d => bm25Score(qTokens, d, avgLen, N, df));
+  const semRaw = hybridDocs.map(d => semanticScoreH(qTokens, d));
+
+  const bm25Norm = normalize(bm25Raw);
+  const semNorm = normalize(semRaw);
+
+  const bm25Ranked = hybridDocs.map((d, i) => ({ doc: d, score: bm25Norm[i] }))
+    .filter(x => x.score > 0.01)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4);
+
+  const semRanked = hybridDocs.map((d, i) => ({ doc: d, score: semNorm[i] }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4);
+
+  const hybridRanked = hybridDocs.map((d, i) => ({
+    doc: d,
+    score: alpha * semNorm[i] + (1 - alpha) * bm25Norm[i],
+    sem: semNorm[i],
+    bm25: bm25Norm[i]
+  }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4);
+
+  return { bm25: bm25Ranked, semantic: semRanked, hybrid: hybridRanked };
+}
+
+function renderHybridCol(elId, results, showBoth = false, hybridIds = null) {
+  const el = document.getElementById(elId);
+  if (results.length === 0) {
+    el.innerHTML = '<div style="color:#64748b; padding: 0.5rem; text-align:center; font-size:0.85rem;">нічого не знайдено</div>';
+    return;
+  }
+  el.innerHTML = results.map((r, i) => {
+    const inHybrid = hybridIds && hybridIds.has(r.doc.id);
+    const scoreText = showBoth
+      ? `sem=${r.sem.toFixed(2)} · bm25=${r.bm25.toFixed(2)} · h=${r.score.toFixed(2)}`
+      : `score: ${r.score.toFixed(3)}`;
+    return `
+      <div class="hybrid-result ${inHybrid ? 'in-hybrid' : ''}">
+        <span class="h-rank">#${i+1}</span>
+        <span class="h-title">${r.doc.title}</span>
+        <span class="h-score">${scoreText}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function runHybridDemo() {
+  const q = document.getElementById('hybridQuery').value.trim();
+  const alpha = parseInt(document.getElementById('alphaSlider').value) / 100;
+  document.getElementById('alphaVal').textContent = alpha.toFixed(2);
+
+  const { bm25, semantic, hybrid } = runHybrid(q, alpha);
+  const hybridIds = new Set(hybrid.map(h => h.doc.id));
+
+  renderHybridCol('bm25Results', bm25, false, hybridIds);
+  renderHybridCol('semanticResults', semantic, false, hybridIds);
+  renderHybridCol('hybridResults', hybrid, true);
+}
+
+document.getElementById('hybridBtn').addEventListener('click', runHybridDemo);
+document.getElementById('hybridQuery').addEventListener('input', runHybridDemo);
+document.getElementById('hybridQuery').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runHybridDemo();
+});
+document.getElementById('alphaSlider').addEventListener('input', runHybridDemo);
+document.querySelectorAll('.hybrid-query-row .suggest-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.getElementById('hybridQuery').value = chip.dataset.hq;
+    runHybridDemo();
+  });
+});
+
+runHybridDemo();
+</script>
+
+</body>
+</html>
