@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embedding Failure Modes Lab</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: #e2e8f0;
+    line-height: 1.6;
+    padding: 1.5rem;
+    min-height: 100vh;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  h1 {
+    font-size: 2.2rem;
+    background: linear-gradient(135deg, #a5b4fc, #f0abfc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.3rem;
+  }
+  .subtitle { color: #94a3b8; }
+
+  nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .tab-btn {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    padding: 0.7rem 1.2rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { background: rgba(139, 92, 246, 0.3); }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    color: white;
+    border-color: transparent;
+  }
+
+  .panel {
+    display: none;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 1.8rem;
+  }
+  .panel.active { display: block; }
+
+  h2 {
+    color: #c4b5fd;
+    margin-bottom: 0.6rem;
+    font-size: 1.5rem;
+  }
+  h3 { color: #e9d5ff; margin: 1.3rem 0 0.7rem; font-size: 1.1rem; }
+  p { color: #cbd5e1; margin-bottom: 0.8rem; }
+  code {
+    background: rgba(0,0,0,0.4);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.88em;
+    color: #fde68a;
+  }
+
+  .problem-box {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 4px solid #ef4444;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    margin-bottom: 1.2rem;
+  }
+  .problem-box strong { color: #fca5a5; }
+
+  .conclusion {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 4px solid #fbbf24;
+    padding: 1rem 1.3rem;
+    border-radius: 8px;
+    margin-top: 1.3rem;
+  }
+  .conclusion strong { color: #fde68a; }
+
+  .controls-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.7rem;
+    flex-wrap: wrap;
+  }
+  input[type="text"], textarea, select {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #e2e8f0;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.92rem;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #c4b5fd;
+  }
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.82rem;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    border: none;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.secondary {
+    background: rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+  }
+
+  .chips {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+  }
+  .chip {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    padding: 0.35rem 0.7rem;
+    border-radius: 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .chip:hover { background: rgba(139, 92, 246, 0.3); }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .col-card {
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 1rem;
+    border-top: 3px solid;
+  }
+  .col-card.before { border-color: #ef4444; }
+  .col-card.after { border-color: #22c55e; }
+  .col-card h4 { color: #e9d5ff; margin-bottom: 0.6rem; font-size: 1rem; }
+
+  .result-row {
+    background: rgba(255,255,255,0.03);
+    padding: 0.55rem 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.35rem;
+    font-size: 0.84rem;
+    display: grid;
+    grid-template-columns: 32px 1fr 70px;
+    gap: 0.6rem;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .result-row .rk { font-family: monospace; color: #fbbf24; font-weight: 700; }
+  .result-row .tx { color: #cbd5e1; line-height: 1.35; }
+  .result-row .sc { color: #fbbf24; font-family: monospace; text-align: right; font-size: 0.82rem; }
+  .result-row.moved-up { background: rgba(34, 197, 94, 0.08); }
+  .result-row.moved-down { background: rgba(239, 68, 68, 0.06); }
+  .result-row.highlight-correct { border-left: 3px solid #22c55e; }
+  .result-row.highlight-wrong { border-left: 3px solid #ef4444; }
+
+  .label-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-left: 0.3rem;
+  }
+  .label-safe { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+  .label-not_safe { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+  .progress-wrap {
+    background: rgba(255,255,255,0.05);
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    margin: 0.5rem 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+    transition: width 0.4s;
+  }
+  .progress-split {
+    display: flex;
+    height: 100%;
+  }
+  .progress-split .used {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+  }
+  .progress-split .lost {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin-top: 0.2rem;
+    font-family: monospace;
+  }
+
+  .pair-card {
+    background: rgba(0,0,0,0.3);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 0.6rem;
+    border-left: 3px solid #8b5cf6;
+  }
+  .pair-card .pair-text {
+    font-family: 'Monaco', monospace;
+    font-size: 0.86rem;
+    color: #e2e8f0;
+    padding: 0.2rem 0;
+  }
+  .pair-card .cosine-val {
+    color: #fbbf24;
+    font-family: monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .chart-wrap {
+    background: rgba(0,0,0,0.3);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-top: 1rem;
+    min-height: 260px;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.6rem 1rem;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    margin: 0.6rem 0;
+    font-size: 0.88rem;
+    flex-wrap: wrap;
+  }
+  .stats-bar .k { color: #94a3b8; }
+  .stats-bar .v { color: #fbbf24; font-family: monospace; font-weight: 600; }
+
+  .warning-box {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    color: #fca5a5;
+    margin: 0.7rem 0;
+  }
+  .success-box {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    color: #86efac;
+    margin: 0.7rem 0;
+  }
+
+  .loading {
+    color: #94a3b8;
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+  }
+  .loading::after {
+    content: '…';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '…'; }
+  }
+
+  .slider-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin: 0.5rem 0;
+  }
+  .slider-row label { min-width: 130px; color: #c4b5fd; }
+  .slider-row input[type="range"] { flex: 1; accent-color: #8b5cf6; }
+  .slider-row .val { color: #fbbf24; font-family: monospace; min-width: 50px; text-align: right; }
+
+  .radio-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.5rem 0;
+  }
+  .radio-group label {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.88rem;
+  }
+  .radio-group input { display: none; }
+  .radio-group input:checked + span { font-weight: 700; color: #fde68a; }
+  .radio-group label:has(input:checked) {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    color: white;
+    border-color: transparent;
+  }
+
+  .keys-bar {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 12px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .keys-bar summary {
+    cursor: pointer;
+    color: #c4b5fd;
+    font-weight: 500;
+    font-size: 0.95rem;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .keys-bar summary::-webkit-details-marker { display: none; }
+  .keys-bar summary::before {
+    content: '▸';
+    color: #8b5cf6;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  .keys-bar[open] summary::before { transform: rotate(90deg); }
+  .keys-bar .status-pill {
+    font-family: monospace;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 12px;
+  }
+  .keys-bar .status-pill.ok { background: rgba(34, 197, 94, 0.15); color: #86efac; }
+  .keys-bar .status-pill.bad { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+  .keys-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-top: 0.9rem;
+  }
+  .keys-grid .field label {
+    display: block;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    margin-bottom: 0.3rem;
+  }
+  .keys-grid input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #e2e8f0;
+    padding: 0.55rem 0.8rem;
+    border-radius: 6px;
+    font-family: 'Monaco', monospace;
+    font-size: 0.82rem;
+  }
+  .keys-grid input:focus {
+    outline: none;
+    border-color: #c4b5fd;
+  }
+  .keys-actions {
+    margin-top: 0.8rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .keys-hint {
+    color: #64748b;
+    font-size: 0.78rem;
+    flex: 1;
+  }
+  .keys-hint a { color: #a5b4fc; }
+
+  footer {
+    text-align: center;
+    color: #64748b;
+    margin-top: 2rem;
+    padding: 1rem;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 720px) {
+    body { padding: 0.8rem; }
+    h1 { font-size: 1.6rem; }
+    .two-col { grid-template-columns: 1fr; }
+    .result-row { grid-template-columns: 28px 1fr 60px; font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>🧪 Embedding Failure Modes Lab</h1>
+  <p class="subtitle">4 failure modes embedding-систем, які ламають production RAG — потич самостійно</p>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="demo1">1. Reranking</button>
+  <button class="tab-btn" data-tab="demo2">2. Negation</button>
+  <button class="tab-btn" data-tab="demo3">3. Truncation</button>
+  <button class="tab-btn" data-tab="demo4">4. Lost in the Middle</button>
+  <button class="tab-btn" data-tab="demo5">5. Domain Mismatch</button>
+</nav>
+
+<details class="keys-bar" id="keysBar">
+  <summary>
+    🔑 API keys
+    <span class="status-pill bad" id="keysStatus">not set</span>
+  </summary>
+  <div class="keys-grid">
+    <div class="field">
+      <label>OpenAI API key (<code>sk-…</code>) — для embeddings та GPT-4o-mini</label>
+      <input type="password" id="openaiKey" placeholder="sk-..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Cohere API key — тільки для Demo 1 (Rerank)</label>
+      <input type="password" id="cohereKey" placeholder="..." autocomplete="off">
+    </div>
+  </div>
+  <div class="keys-actions">
+    <button class="btn" id="keysSaveBtn">💾 Save locally</button>
+    <button class="btn secondary" id="keysClearBtn">🗑 Clear</button>
+    <span class="keys-hint">
+      Ключі зберігаються у <code>localStorage</code> браузера й передаються у кожному запиті через
+      <code>X-OpenAI-Key</code> / <code>X-Cohere-Key</code> headers. Ніде на бекенді не логуються.
+      Отримати: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI</a> ·
+      <a href="https://dashboard.cohere.com/api-keys" target="_blank">Cohere</a>.
+    </span>
+  </div>
+</details>
+
+<!-- ═══════════════ DEMO 1: Reranking ═══════════════ -->
+<section class="panel active" id="demo1">
+  <h2>🔀 Demo 1 — Reranking: bi-encoder vs cross-encoder</h2>
+
+  <div class="problem-box">
+    <strong>Проблема:</strong> Vector search (bi-encoder) повертає top-k за тематикою, але
+    порядок часто неправильний. Cross-encoder reranker читає query + document разом і
+    суттєво покращує релевантність — в Anthropic retrieval failures впали з 5.7% до 1.9%.
+  </div>
+
+  <h3>Query</h3>
+  <div class="chips">
+    <span class="chip" data-q="How do I build a real-time chat app with bidirectional communication?">💬 Real-time chat</span>
+    <span class="chip" data-q="How can I send emails in the background without blocking my API requests?">📧 Background email jobs</span>
+    <span class="chip" data-q="I added a new column to my model, how do I apply it to the production database?">🗄️ Migrate schema</span>
+    <span class="chip" data-q="How to handle async database connections in FastAPI?">⚡ Async DB in FastAPI</span>
+    <span class="chip" data-q="Which Python framework is fastest for high-throughput REST APIs?">🏎️ Fastest framework</span>
+  </div>
+  <div class="controls-row">
+    <input type="text" id="demo1Query" placeholder="Введи свій запит англійською..." style="flex:1; min-width: 250px;">
+    <button class="btn" id="demo1Btn">🔎 Run both</button>
+  </div>
+
+  <div id="demo1Status"></div>
+
+  <div class="two-col">
+    <div class="col-card before">
+      <h4>🟥 До: Vector search only (top-10)</h4>
+      <div id="demo1Vector"></div>
+    </div>
+    <div class="col-card after">
+      <h4>🟩 Після: Vector + Cohere Rerank</h4>
+      <div id="demo1Rerank"></div>
+    </div>
+  </div>
+
+  <h3>📊 Зміни позицій після reranker</h3>
+  <div class="chart-wrap"><canvas id="demo1Chart"></canvas></div>
+
+  <div class="conclusion">
+    <strong>Висновок:</strong> Bi-encoder бачить «схожість тематики», cross-encoder читає
+    query + document разом та оцінює «чи це справді відповідь». Додавай reranker після
+    vector search — це найдешевший спосіб підняти якість RAG на 10-20 nDCG points.
+  </div>
+</section>
+
+<!-- ═══════════════ DEMO 2: Negation ═══════════════ -->
+<section class="panel" id="demo2">
+  <h2>🚫 Demo 2 — Negation Blindness</h2>
+
+  <div class="problem-box">
+    <strong>Проблема:</strong> Embeddings моделюють про що текст, а не що саме він
+    стверджує. «I love this» та «I hate this» — майже однакові вектори. Для медицини,
+    права чи безпеко-критичних доменів це катастрофа.
+  </div>
+
+  <h3>Part A — Similarity між парами</h3>
+  <p>Натисни на пару, щоб побачити їх cosine similarity:</p>
+
+  <div class="chips" id="demo2Pairs"></div>
+  <div id="demo2PairResult"></div>
+
+  <h3>Part B — Retrieval демо</h3>
+  <p>
+    Query: <code>drugs NOT safe for pregnant patients</code>.
+    База — 20 тверджень про ліки, половина «safe», половина «NOT safe».
+  </p>
+  <button class="btn" id="demo2RetrieveBtn">🔎 Запустити retrieval</button>
+  <div id="demo2RetrieveStatus"></div>
+
+  <div class="two-col">
+    <div class="col-card before">
+      <h4>🟥 До: Naive vector search</h4>
+      <div id="demo2Naive"></div>
+    </div>
+    <div class="col-card after">
+      <h4>🟩 Після: NLI-класифікатор (GPT-4o-mini)</h4>
+      <div id="demo2Nli"></div>
+    </div>
+  </div>
+
+  <h3>📊 PCA (2D) — пари у просторі</h3>
+  <p>Видно, що пари «love/hate» сидять поруч — embeddings не бачать заперечення.</p>
+  <button class="btn secondary" id="demo2PcaBtn">📍 Побудувати PCA</button>
+  <div class="chart-wrap"><canvas id="demo2Chart"></canvas></div>
+
+  <div class="conclusion">
+    <strong>Висновок:</strong> Для безпеко-критичних доменів не покладайся на cosine similarity —
+    додавай NLI-класифікатор, LLM reranker, або правило-фільтр. Embeddings мовчки
+    пропускають «not», «without», «no» — це один з найнебезпечніших failure modes.
+  </div>
+</section>
+
+<!-- ═══════════════ DEMO 3: Truncation ═══════════════ -->
+<section class="panel" id="demo3">
+  <h2>✂️ Demo 3 — Silent Truncation</h2>
+
+  <div class="problem-box">
+    <strong>Проблема:</strong> Якщо документ довший за context window моделі — все
+    зайве просто відкидається <em>мовчки</em>, без warnings. Половина твоєї бази
+    знань може не існувати для пошуку, а ти цього навіть не помітиш.
+  </div>
+
+  <h3>Part A — Порахувати токени</h3>
+  <div class="chips">
+    <span class="chip" data-preset="short">📄 Short (~100 tokens) — все вміститься</span>
+    <span class="chip" data-preset="medium">📃 Medium (~500) — MiniLM уже truncates</span>
+    <span class="chip" data-preset="long">📰 Long (~5000) — навіть OpenAI вміщує</span>
+    <span class="chip" data-preset="verylong">📚 Very Long (~15000) — всі моделі втрачають частину</span>
+  </div>
+  <p style="font-size: 0.85rem; color: #94a3b8; margin-top: -0.3rem;">
+    💡 Обери <code>Medium</code> + модель <code>all-MiniLM-L6-v2</code> — побачиш, що 500 токенів уже не вміщаються у 512-лімітну модель (це класична sentence-transformer, яку студенти часто юзають).
+  </p>
+  <textarea id="demo3Input" placeholder="Встав текст або обери preset вище..."></textarea>
+  <div class="controls-row" style="margin-top: 0.5rem;">
+    <label style="color: #c4b5fd;">Модель:&nbsp;</label>
+    <select id="demo3Model">
+      <option value="text-embedding-3-small">text-embedding-3-small (limit 8191)</option>
+      <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2 (limit 512)</option>
+      <option value="text-embedding-ada-002">text-embedding-ada-002 (limit 8191)</option>
+    </select>
+    <button class="btn" id="demo3CountBtn">🔢 Порахувати</button>
+  </div>
+
+  <div id="demo3TokensResult"></div>
+
+  <h3>Part B — «Знайди секрет» у довгому документі</h3>
+  <p>
+    У документ ~15000 токенів вшито факт: <code>The secret password is BANANA-42.</code>
+    на позиції ~10000 токенів. Query: <em>What is the secret password?</em>
+  </p>
+  <div class="controls-row">
+    <button class="btn secondary" id="demo3NoChunk">🟥 Без чанкування (limit 512)</button>
+    <button class="btn" id="demo3WithChunk">🟩 З чанкуванням</button>
+  </div>
+  <div id="demo3SearchStatus"></div>
+  <div class="two-col">
+    <div class="col-card before">
+      <h4>🟥 Без чанкування</h4>
+      <div id="demo3NoChunkResult"><em style="color:#64748b;">Натисни кнопку →</em></div>
+    </div>
+    <div class="col-card after">
+      <h4>🟩 З чанкуванням (400 tokens/chunk)</h4>
+      <div id="demo3WithChunkResult"><em style="color:#64748b;">Натисни кнопку →</em></div>
+    </div>
+  </div>
+
+  <div class="conclusion">
+    <strong>Висновок:</strong> Embedders мовчки обрізають довгий текст. Завжди перевіряй
+    <code>context_length</code> моделі та чанкуй документи самостійно (типово 200-400
+    токенів на чанк з overlap). Інакше половина твоєї бази знань просто «не існує».
+  </div>
+</section>
+
+<!-- ═══════════════ DEMO 4: Lost in the Middle ═══════════════ -->
+<section class="panel" id="demo4">
+  <h2>🎯 Demo 4 — Lost in the Middle</h2>
+
+  <div class="problem-box">
+    <strong>Проблема:</strong> LLM краще витягує факти з початку та кінця контексту,
+    а з середини — гірше. Більше чанків ≠ краща відповідь. Це прямо випливає з
+    U-shape attention pattern у Transformer-ах (Liu et al., 2023).
+  </div>
+
+  <p>
+    Query: <code>What is the actual memory span of goldfish?</code><br>
+    Правильна відповідь: <em>«several months»</em> (міститься лише в одному passage).
+  </p>
+
+  <h3>🎬 Готові сценарії</h3>
+  <p style="font-size: 0.9rem;">Натисни preset — він одразу виставить position + total_chunks і запустить тест:</p>
+  <div class="chips">
+    <span class="chip" data-scenario="best">🟢 Best case: 3 чанки, факт на 1-й позиції</span>
+    <span class="chip" data-scenario="good-end">🟢 Good: 10 чанків, факт останній</span>
+    <span class="chip" data-scenario="bad-middle">🔴 Bad: 10 чанків, факт у середині (5/10)</span>
+    <span class="chip" data-scenario="worst">☠️ Worst: 20 чанків, факт у глибокій середині (10/20)</span>
+  </div>
+
+  <div class="slider-row">
+    <label>Позиція goldfish:</label>
+    <div class="radio-group" id="demo4Positions">
+      <label><input type="radio" name="pos" value="1"><span>1st</span></label>
+      <label><input type="radio" name="pos" value="3" checked><span>3rd</span></label>
+      <label><input type="radio" name="pos" value="5"><span>5th (middle)</span></label>
+      <label><input type="radio" name="pos" value="8"><span>8th</span></label>
+      <label><input type="radio" name="pos" value="10"><span>10th (last)</span></label>
+    </div>
+  </div>
+
+  <div class="slider-row">
+    <label>Всього чанків:</label>
+    <input type="range" id="demo4Total" min="3" max="20" value="10">
+    <span class="val" id="demo4TotalVal">10</span>
+  </div>
+
+  <div class="controls-row">
+    <button class="btn" id="demo4RunBtn">▶️ Run single</button>
+    <button class="btn secondary" id="demo4RunAllBtn">📊 Run all positions (U-shape)</button>
+  </div>
+
+  <div id="demo4SingleResult"></div>
+
+  <h3>📈 U-shape графік: accuracy vs position</h3>
+  <div class="chart-wrap"><canvas id="demo4Chart"></canvas></div>
+
+  <div class="conclusion">
+    <strong>Висновок:</strong> Більше контексту — не означає кращу відповідь. Менше чанків,
+    <em>найрелевантніший — першим або останнім</em>. Якщо робиш RAG з довгим контекстом —
+    завжди reorder: топ-1 chunk на початок, топ-2 в кінець, решту в середину. Або просто
+    менше top-K.
+  </div>
+</section>
+
+<!-- ═══════════════ DEMO 5: Domain Mismatch ═══════════════ -->
+<section class="panel" id="demo5">
+  <h2>🌐 Demo 5 — Domain Mismatch</h2>
+
+  <div class="problem-box">
+    <strong>Проблема:</strong> General-purpose embedders (OpenAI <code>text-embedding-3-small</code>,
+    Cohere <code>embed-english-v3</code>) натреновані переважно на web-тексті. Коли ти подаєш
+    їм <em>код</em>, <em>юридичні тексти</em>, чи <em>медичні записи</em> — модель часто
+    кластеризує за поверхневою лексикою домену, а не за справжнім сенсом.
+  </div>
+
+  <p>
+    У базі — <strong>18 чанків</strong> у 3 доменах (<code>code</code>, <code>legal</code>,
+    <code>general</code>), по 6 на кожен. Вони розбиті на 6 семантичних тем (sort, auth, delete,
+    retry, refund, rate-limiting) — по одному представнику в кожному домені. Ідеальний embedder мав
+    би об'єднувати тексти за <em>темою</em>, а не за <em>доменом</em>.
+  </p>
+
+  <h3>🧬 Embedder model</h3>
+  <p style="font-size: 0.9rem;">
+    Різні моделі по-різному стійкі до domain shift. <code>ada-002</code> — стара (2022),
+    більш схильна до domain bias. <code>3-small</code> — дефолт у 2024. <code>3-large</code>
+    — найякісніша, найдорожча. <strong>Перемикай і дивись різницю у PCA та retrieval.</strong>
+  </p>
+  <div class="radio-group" id="demo5ModelGroup">
+    <label><input type="radio" name="demo5model" value="text-embedding-3-small" checked><span>3-small (default)</span></label>
+    <label><input type="radio" name="demo5model" value="text-embedding-3-large"><span>3-large (best)</span></label>
+    <label><input type="radio" name="demo5model" value="text-embedding-ada-002"><span>ada-002 (old, 2022)</span></label>
+  </div>
+
+  <h3>🔎 Retrieval</h3>
+  <p>Натисни preset або введи свій query:</p>
+  <div class="chips" id="demo5Presets"></div>
+  <div class="controls-row">
+    <input type="text" id="demo5Query" placeholder="e.g. exponential backoff on HTTP failure" style="flex:1; min-width: 250px;">
+    <button class="btn" id="demo5SearchBtn">🔎 Search</button>
+  </div>
+  <div id="demo5SearchStatus"></div>
+  <div id="demo5SearchResults"></div>
+
+  <h3>📊 PCA (2D) — як embedder кластеризує 18 чанків</h3>
+  <p>
+    Кольором — <strong>домен</strong>, формою/номером — <strong>тема</strong>. Якщо embedder
+    розуміє семантику, точки з однаковою темою мають злипатися незалежно від кольору. Якщо модель
+    «domain-biased» — точки кластеризуються за кольором (code/legal/general окремо), а теми
+    плутаються.
+  </p>
+  <button class="btn secondary" id="demo5PcaBtn">📍 Побудувати PCA</button>
+  <div class="chart-wrap"><canvas id="demo5Chart"></canvas></div>
+
+  <div class="conclusion">
+    <strong>Висновок:</strong> General-purpose embedder є компроміс. Для продакшену у
+    domain-heavy задачах обирай <strong>domain-specific моделі</strong>: <code>voyage-code-3</code>
+    або CodeBERT для коду, legal-BERT для юриспруденції, BioBERT/SciBERT для медицини/науки.
+    Або fine-tune свій embedder на доменному корпусі. Альтернатива — hybrid: чанкуй документи
+    за доменом і тримай їх у окремих vector-індексах.
+  </div>
+</section>
+
+<footer>
+  AI Engineering Course · Lesson 7 · Embeddings &amp; Semantic Systems
+</footer>
+
+</div>
+
+<script>
+// ═══════════════ Tabs ═══════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════ API keys management ═══════════════
+const KEYS = {
+  openai: localStorage.getItem('efl_openai_key') || '',
+  cohere: localStorage.getItem('efl_cohere_key') || ''
+};
+
+function updateKeysStatus() {
+  const pill = document.getElementById('keysStatus');
+  const has = KEYS.openai ? (KEYS.cohere ? 'OpenAI + Cohere' : 'OpenAI only') : (KEYS.cohere ? 'Cohere only' : null);
+  if (has) {
+    pill.textContent = '✓ ' + has;
+    pill.className = 'status-pill ok';
+  } else {
+    pill.textContent = 'not set';
+    pill.className = 'status-pill bad';
+  }
+}
+
+document.getElementById('openaiKey').value = KEYS.openai;
+document.getElementById('cohereKey').value = KEYS.cohere;
+updateKeysStatus();
+if (!KEYS.openai) document.getElementById('keysBar').open = true;
+
+document.getElementById('keysSaveBtn').addEventListener('click', () => {
+  KEYS.openai = document.getElementById('openaiKey').value.trim();
+  KEYS.cohere = document.getElementById('cohereKey').value.trim();
+  if (KEYS.openai) localStorage.setItem('efl_openai_key', KEYS.openai);
+  else localStorage.removeItem('efl_openai_key');
+  if (KEYS.cohere) localStorage.setItem('efl_cohere_key', KEYS.cohere);
+  else localStorage.removeItem('efl_cohere_key');
+  updateKeysStatus();
+});
+
+document.getElementById('keysClearBtn').addEventListener('click', () => {
+  KEYS.openai = '';
+  KEYS.cohere = '';
+  localStorage.removeItem('efl_openai_key');
+  localStorage.removeItem('efl_cohere_key');
+  document.getElementById('openaiKey').value = '';
+  document.getElementById('cohereKey').value = '';
+  updateKeysStatus();
+});
+
+// ═══════════════ Helpers ═══════════════
+async function api(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (KEYS.openai) headers['X-OpenAI-Key'] = KEYS.openai;
+  if (KEYS.cohere) headers['X-Cohere-Key'] = KEYS.cohere;
+  const resp = await fetch(path, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body || {})
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+    throw new Error(err.detail || 'API error');
+  }
+  return resp.json();
+}
+
+function loading(el, msg) {
+  el.innerHTML = `<div class="loading">${msg}</div>`;
+}
+
+function err(el, msg) {
+  el.innerHTML = `<div class="warning-box">⚠️ ${msg}</div>`;
+}
+
+function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+// ═══════════════ DEMO 1: Reranking ═══════════════
+let demo1Chart = null;
+
+document.querySelectorAll('#demo1 .chip').forEach(c => {
+  c.addEventListener('click', () => {
+    document.getElementById('demo1Query').value = c.dataset.q;
+  });
+});
+
+document.getElementById('demo1Btn').addEventListener('click', async () => {
+  const q = document.getElementById('demo1Query').value.trim();
+  if (!q) return;
+  const status = document.getElementById('demo1Status');
+  loading(status, 'Embedding + reranking');
+  try {
+    const data = await api('/api/demo1/search', { query: q });
+    status.innerHTML = '';
+    renderDemo1Results(data);
+  } catch (e) {
+    err(status, e.message);
+  }
+});
+
+function renderDemo1Results(data) {
+  const vCol = document.getElementById('demo1Vector');
+  const rCol = document.getElementById('demo1Rerank');
+
+  vCol.innerHTML = data.vector_results.map(r => `
+    <div class="result-row">
+      <span class="rk">#${r.rank}</span>
+      <span class="tx">${truncate(r.text, 140)}</span>
+      <span class="sc">${r.score.toFixed(3)}</span>
+    </div>
+  `).join('');
+
+  rCol.innerHTML = data.rerank_results.map(r => {
+    const cls = r.delta > 0 ? 'moved-up' : (r.delta < 0 ? 'moved-down' : '');
+    const arrow = r.delta > 0 ? `↑${r.delta}` : (r.delta < 0 ? `↓${Math.abs(r.delta)}` : '–');
+    return `
+      <div class="result-row ${cls}">
+        <span class="rk">#${r.rank}</span>
+        <span class="tx">${truncate(r.text, 140)} <small style="color:#94a3b8;">[${arrow}]</small></span>
+        <span class="sc">${r.score.toFixed(3)}</span>
+      </div>
+    `;
+  }).join('');
+
+  // Rank delta chart
+  const labels = data.rerank_results.map(r => `Doc ${r.id}`);
+  const deltas = data.rerank_results.map(r => r.delta);
+  const colors = deltas.map(d => d > 0 ? 'rgba(34, 197, 94, 0.7)' : d < 0 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(148, 163, 184, 0.5)');
+
+  if (demo1Chart) demo1Chart.destroy();
+  demo1Chart = new Chart(document.getElementById('demo1Chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Rank change (positive = moved up)',
+        data: deltas,
+        backgroundColor: colors
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#cbd5e1' } }
+      },
+      scales: {
+        x: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+
+// ═══════════════ DEMO 2: Negation ═══════════════
+const demo2Pairs = [
+  { id: 1, label: "❤️ love vs hate", a: "I love this product", b: "I hate this product" },
+  { id: 2, label: "💊 safe vs NOT safe", a: "This drug is safe for pregnancy", b: "This drug is NOT safe for pregnancy" },
+  { id: 3, label: "💻 with vs without", a: "Laptops with touchscreen", b: "Laptops without touchscreen" },
+  { id: 4, label: "😊 happy vs unhappy", a: "Happy customer reviews", b: "Unhappy customer reviews" },
+  { id: 5, label: "✅ recommended vs not", a: "Recommended for beginners", b: "Not recommended for beginners" },
+  { id: 6, label: "🔥 опозитні факти", a: "The surgery was a complete success", b: "The surgery was a complete failure" },
+  { id: 7, label: "⚠️ медичний кейс", a: "Patient may take ibuprofen during pregnancy", b: "Patient must NOT take ibuprofen during pregnancy" }
+];
+
+const pairsEl = document.getElementById('demo2Pairs');
+pairsEl.innerHTML = demo2Pairs.map(p => `<span class="chip" data-pid="${p.id}">${p.label}</span>`).join('');
+pairsEl.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', async () => {
+    const p = demo2Pairs.find(x => x.id == c.dataset.pid);
+    const res = document.getElementById('demo2PairResult');
+    loading(res, 'Embedding pair');
+    try {
+      const data = await api('/api/demo2/similarity', { text_a: p.a, text_b: p.b });
+      const pct = (data.cosine * 100).toFixed(1);
+      res.innerHTML = `
+        <div class="pair-card">
+          <div class="pair-text">A: "${p.a}"</div>
+          <div class="pair-text">B: "${p.b}"</div>
+          <div style="margin-top: 0.5rem;">
+            Cosine similarity: <span class="cosine-val">${data.cosine.toFixed(3)}</span> (${pct}%)
+          </div>
+          <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%"></div></div>
+          ${data.cosine > 0.8 ? '<div class="warning-box" style="margin-top:0.5rem;">⚠️ Майже однакові вектори — семантично модель не відрізняє ці фрази.</div>' : ''}
+        </div>
+      `;
+    } catch (e) { err(res, e.message); }
+  });
+});
+
+document.getElementById('demo2RetrieveBtn').addEventListener('click', async () => {
+  const status = document.getElementById('demo2RetrieveStatus');
+  loading(status, 'Retrieve + NLI classification');
+  try {
+    const data = await api('/api/demo2/retrieve', { query: 'drugs NOT safe for pregnant patients' });
+    status.innerHTML = '';
+
+    const naiveEl = document.getElementById('demo2Naive');
+    const nliEl = document.getElementById('demo2Nli');
+
+    const renderRow = (r) => `
+      <div class="result-row ${r.label === 'not_safe' ? 'highlight-correct' : 'highlight-wrong'}">
+        <span class="rk">${r.label === 'not_safe' ? '✓' : '✗'}</span>
+        <span class="tx">${truncate(r.text, 160)}<span class="label-badge label-${r.label}">${r.label}</span></span>
+        <span class="sc">${r.score.toFixed(3)}</span>
+      </div>`;
+
+    naiveEl.innerHTML = data.naive.map(renderRow).join('');
+    nliEl.innerHTML = data.nli_filtered.length
+      ? data.nli_filtered.map(renderRow).join('')
+      : '<em style="color:#94a3b8;">NLI відфільтрував усі кандидати</em>';
+
+    const safeLeaks = data.naive.filter(r => r.label === 'safe').length;
+    if (safeLeaks > 0) {
+      naiveEl.insertAdjacentHTML('beforebegin',
+        `<div class="warning-box">Naive search повернув ${safeLeaks} «safe»-тверджень серед top-10 — query просило NOT safe!</div>`);
+    }
+  } catch (e) { err(status, e.message); }
+});
+
+let demo2Chart = null;
+document.getElementById('demo2PcaBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('demo2PcaBtn');
+  btn.disabled = true;
+  btn.textContent = 'Embedding...';
+  try {
+    const data = await api('/api/demo2/pca');
+    const pairColors = ['#8b5cf6', '#ec4899', '#f59e0b', '#22c55e', '#3b82f6'];
+    const datasets = [];
+    const byPair = {};
+    data.points.forEach(p => {
+      (byPair[p.pair_id] ||= []).push(p);
+    });
+    Object.entries(byPair).forEach(([pid, pts], idx) => {
+      datasets.push({
+        label: `Pair ${pid}`,
+        data: pts.map(p => ({ x: p.x, y: p.y, label: p.label })),
+        backgroundColor: pairColors[idx % pairColors.length],
+        pointRadius: 8,
+        showLine: true,
+        borderColor: pairColors[idx % pairColors.length],
+        borderDash: [4, 4]
+      });
+    });
+    if (demo2Chart) demo2Chart.destroy();
+    demo2Chart = new Chart(document.getElementById('demo2Chart'), {
+      type: 'scatter',
+      data: { datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#cbd5e1' } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ctx.raw.label
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  } catch (e) { alert(e.message); }
+  finally {
+    btn.disabled = false;
+    btn.textContent = '📍 Побудувати PCA';
+  }
+});
+
+// ═══════════════ DEMO 3: Truncation ═══════════════
+const demo3Presets = {
+  short: "FastAPI is a modern Python web framework. It supports async/await and generates OpenAPI docs automatically. Developers love it for building REST APIs quickly.".repeat(2),
+  medium: ("Microservices architecture decomposes applications into small, independently deployable services. Each service owns its own data store and communicates with others through well-defined APIs, typically REST or gRPC. This approach improves team autonomy, allows independent scaling, and enables heterogeneous technology stacks. However it introduces new challenges: distributed transactions, eventual consistency, network failures, and more complex debugging. Observability becomes critical — you need distributed tracing, centralized logging, and metrics aggregation to understand what's happening across the system. ").repeat(4),
+  long: "",  // filled at load
+  verylong: "" // filled at load
+};
+
+// Populate long/verylong on demand from the server
+async function loadLongPreset() {
+  if (demo3Presets.long) return;
+  const resp = await fetch('/static/data/long_doc.txt');
+  const text = await resp.text();
+  // ~5000 tokens ~= 3750 words
+  const words = text.split(/\s+/);
+  demo3Presets.long = words.slice(0, 3750).join(' ');
+  demo3Presets.verylong = text;
+}
+
+document.querySelectorAll('#demo3 .chip').forEach(c => {
+  c.addEventListener('click', async () => {
+    const preset = c.dataset.preset;
+    if (preset === 'long' || preset === 'verylong') await loadLongPreset();
+    document.getElementById('demo3Input').value = demo3Presets[preset];
+  });
+});
+
+document.getElementById('demo3CountBtn').addEventListener('click', async () => {
+  const text = document.getElementById('demo3Input').value;
+  const model = document.getElementById('demo3Model').value;
+  const resEl = document.getElementById('demo3TokensResult');
+  if (!text.trim()) { resEl.innerHTML = '<em style="color:#94a3b8;">Порожній текст</em>'; return; }
+  loading(resEl, 'Counting tokens');
+  try {
+    const d = await api('/api/demo3/tokens', { text, model });
+    const usedPct = (d.used / Math.max(d.total_tokens, 1)) * 100;
+    const lostPct = (d.lost / Math.max(d.total_tokens, 1)) * 100;
+    resEl.innerHTML = `
+      <div class="stats-bar">
+        <span><span class="k">Model:</span> <span class="v">${d.model}</span></span>
+        <span><span class="k">Limit:</span> <span class="v">${d.model_limit}</span></span>
+        <span><span class="k">Total:</span> <span class="v">${d.total_tokens}</span></span>
+        <span><span class="k">Used:</span> <span class="v" style="color:#86efac;">${d.used}</span></span>
+        <span><span class="k">Lost:</span> <span class="v" style="color:#fca5a5;">${d.lost}</span></span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-split">
+          <div class="used" style="width:${usedPct}%"></div>
+          <div class="lost" style="width:${lostPct}%"></div>
+        </div>
+      </div>
+      <div class="progress-label">
+        <span>✓ used (${d.used})</span>
+        <span>${d.lost > 0 ? `⚠️ lost forever (${d.lost})` : ''}</span>
+      </div>
+      ${d.truncated ? `<div class="warning-box">⚠️ TRUNCATED: ${d.lost} токенів відкинуто без warning. Ці дані не індексуються.</div>` : `<div class="success-box">✓ Весь текст поміщається у context window.</div>`}
+    `;
+  } catch (e) { err(resEl, e.message); }
+});
+
+async function runDemo3Search(useChunking) {
+  const status = document.getElementById('demo3SearchStatus');
+  const targetEl = useChunking ? document.getElementById('demo3WithChunkResult') : document.getElementById('demo3NoChunkResult');
+  loading(status, useChunking ? 'Chunking + embedding' : 'Embedding truncated doc');
+  loading(targetEl, '');
+  try {
+    const d = await api('/api/demo3/search', { use_chunking: useChunking });
+    status.innerHTML = '';
+    targetEl.innerHTML = `
+      <div class="stats-bar">
+        <span><span class="k">Total tokens:</span> <span class="v">${d.total_tokens}</span></span>
+        ${d.num_chunks ? `<span><span class="k">Chunks:</span> <span class="v">${d.num_chunks}</span></span>` : ''}
+        ${d.used_tokens !== undefined ? `<span><span class="k">Used:</span> <span class="v">${d.used_tokens}</span></span>` : ''}
+        ${d.lost_tokens ? `<span><span class="k">Lost:</span> <span class="v" style="color:#fca5a5;">${d.lost_tokens}</span></span>` : ''}
+        <span><span class="k">Best score:</span> <span class="v">${d.best_score.toFixed(3)}</span></span>
+      </div>
+      ${d.found_secret
+        ? `<div class="success-box">✓ Знайдено: <code>BANANA-42</code> у найкращому чанку!</div>`
+        : `<div class="warning-box">✗ Секрет НЕ знайдено. ${d.explanation}</div>`}
+      <details style="margin-top:0.5rem;">
+        <summary style="cursor:pointer; color:#94a3b8;">Показати best chunk</summary>
+        <pre style="background:rgba(0,0,0,0.4); padding:0.7rem; border-radius:6px; font-size:0.78rem; white-space:pre-wrap; margin-top:0.3rem; color:#cbd5e1;">${d.best_chunk}</pre>
+      </details>
+    `;
+  } catch (e) { err(status, e.message); targetEl.innerHTML = ''; }
+}
+
+document.getElementById('demo3NoChunk').addEventListener('click', () => runDemo3Search(false));
+document.getElementById('demo3WithChunk').addEventListener('click', () => runDemo3Search(true));
+
+// ═══════════════ DEMO 4: Lost in the Middle ═══════════════
+let demo4Chart = null;
+
+document.getElementById('demo4Total').addEventListener('input', (e) => {
+  document.getElementById('demo4TotalVal').textContent = e.target.value;
+});
+
+// Scenario presets — auto-configure sliders + run
+const demo4Scenarios = {
+  'best':       { pos: 1,  total: 3,  expect: 'correct' },
+  'good-end':   { pos: 10, total: 10, expect: 'correct' },
+  'bad-middle': { pos: 5,  total: 10, expect: 'likely-wrong' },
+  'worst':      { pos: 10, total: 20, expect: 'likely-wrong' }
+};
+
+document.querySelectorAll('#demo4 .chip[data-scenario]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const s = demo4Scenarios[chip.dataset.scenario];
+    // Update position radios — ensure value exists, otherwise pick closest
+    const positions = Array.from(document.querySelectorAll('input[name="pos"]')).map(r => parseInt(r.value));
+    let target = s.pos;
+    if (!positions.includes(target)) {
+      target = positions.reduce((a, b) => Math.abs(b - s.pos) < Math.abs(a - s.pos) ? b : a);
+    }
+    document.querySelectorAll('input[name="pos"]').forEach(r => {
+      r.checked = (parseInt(r.value) === target);
+    });
+    // Update total slider
+    document.getElementById('demo4Total').value = s.total;
+    document.getElementById('demo4TotalVal').textContent = s.total;
+    // Auto-run
+    document.getElementById('demo4RunBtn').click();
+  });
+});
+
+document.getElementById('demo4RunBtn').addEventListener('click', async () => {
+  const pos = parseInt(document.querySelector('input[name="pos"]:checked').value);
+  const total = parseInt(document.getElementById('demo4Total').value);
+  const resEl = document.getElementById('demo4SingleResult');
+  loading(resEl, `Calling GPT-4o-mini (position ${pos} of ${total})`);
+  try {
+    const d = await api('/api/demo4/run', { position: pos, total_chunks: total, run_all: false });
+    resEl.innerHTML = `
+      <div class="${d.correct ? 'success-box' : 'warning-box'}" style="margin-top:0.7rem;">
+        <strong>${d.correct ? '✓ Правильно' : '✗ Неправильно'}</strong> · position ${d.position} / ${d.total_chunks}<br>
+        <span style="font-family:monospace; font-size:0.88rem;">Answer: "${d.answer}"</span>
+      </div>
+    `;
+  } catch (e) { err(resEl, e.message); }
+});
+
+document.getElementById('demo4RunAllBtn').addEventListener('click', async () => {
+  const total = parseInt(document.getElementById('demo4Total').value);
+  const resEl = document.getElementById('demo4SingleResult');
+  loading(resEl, `Running ${5} positions sequentially`);
+  try {
+    const d = await api('/api/demo4/run', { position: 1, total_chunks: total, run_all: true });
+    resEl.innerHTML = `<div class="success-box">✓ Запустили ${d.results.length} позицій. Дивись графік нижче.</div>`;
+
+    if (demo4Chart) demo4Chart.destroy();
+    demo4Chart = new Chart(document.getElementById('demo4Chart'), {
+      type: 'line',
+      data: {
+        labels: d.results.map(r => `pos ${r.position}/${total}`),
+        datasets: [{
+          label: 'Correct (1/0)',
+          data: d.results.map(r => r.correct ? 100 : 0),
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251, 191, 36, 0.15)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 8,
+          pointBackgroundColor: d.results.map(r => r.correct ? '#22c55e' : '#ef4444')
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#cbd5e1' } },
+          tooltip: {
+            callbacks: {
+              afterLabel: (ctx) => d.results[ctx.dataIndex].answer
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { min: 0, max: 100, ticks: { color: '#cbd5e1', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  } catch (e) { err(resEl, e.message); }
+});
+
+// ═══════════════ DEMO 5: Domain Mismatch ═══════════════
+const demo5Presets = [
+  { text: "how to put numbers in order from small to big",    icon: "📊", topic: "sort-array" },
+  { text: "block people who didn't log in",                   icon: "🔒", topic: "user-auth" },
+  { text: "remove user information from the system",          icon: "🗑️", topic: "data-deletion" },
+  { text: "exponential backoff on HTTP failure",              icon: "🔁", topic: "retry-logic" },
+  { text: "obligation to reimburse customer upon cancellation", icon: "💰", topic: "payment-refund" },
+  { text: "stop users from sending too many requests",        icon: "🚦", topic: "rate-limiting" }
+];
+
+const DOMAIN_COLORS = {
+  code:    '#3b82f6',
+  legal:   '#f59e0b',
+  general: '#22c55e'
+};
+
+const demo5PresetsEl = document.getElementById('demo5Presets');
+demo5PresetsEl.innerHTML = demo5Presets.map(p =>
+  `<span class="chip" data-q="${p.text}" data-topic="${p.topic}">${p.icon} ${p.text}</span>`
+).join('');
+
+demo5PresetsEl.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.getElementById('demo5Query').value = chip.dataset.q;
+    document.getElementById('demo5SearchBtn').dataset.expectedTopic = chip.dataset.topic;
+    document.getElementById('demo5SearchBtn').click();
+  });
+});
+
+function demo5SelectedModel() {
+  const r = document.querySelector('input[name="demo5model"]:checked');
+  return r ? r.value : 'text-embedding-3-small';
+}
+
+document.getElementById('demo5SearchBtn').addEventListener('click', async () => {
+  const q = document.getElementById('demo5Query').value.trim();
+  if (!q) return;
+  const expectedTopic = document.getElementById('demo5SearchBtn').dataset.expectedTopic || null;
+  const model = demo5SelectedModel();
+  const status = document.getElementById('demo5SearchStatus');
+  const resEl = document.getElementById('demo5SearchResults');
+  loading(status, `Embedding query + scoring (${model})`);
+  resEl.innerHTML = '';
+  try {
+    const data = await api('/api/demo5/search', { query: q, model });
+    status.innerHTML = '';
+
+    // Count how many of top-3 match the expected topic (if we know it)
+    let topicMatchInfo = '';
+    if (expectedTopic) {
+      const top3 = data.results.slice(0, 3);
+      const hits = top3.filter(r => r.topic === expectedTopic).length;
+      if (hits === 3) {
+        topicMatchInfo = `<div class="success-box">✓ Усі top-3 результати потрапили у правильну тему <code>${expectedTopic}</code>. Embedder спрацював добре.</div>`;
+      } else if (hits === 0) {
+        topicMatchInfo = `<div class="warning-box">✗ Жоден з top-3 не з правильної теми <code>${expectedTopic}</code> — embedder кластеризує за доменом, а не за сенсом.</div>`;
+      } else {
+        topicMatchInfo = `<div class="warning-box">⚠️ Тільки ${hits} з top-3 у правильній темі <code>${expectedTopic}</code>. Часткове domain bias.</div>`;
+      }
+    }
+
+    const rows = data.results.map((r, i) => {
+      const color = DOMAIN_COLORS[r.domain];
+      const isExpected = expectedTopic && r.topic === expectedTopic;
+      const badge = `<span style="display:inline-block; padding:0.1rem 0.45rem; border-radius:4px; font-size:0.72rem; font-weight:600; background:${color}33; color:${color}; margin-left:0.3rem;">${r.domain}</span>`;
+      const topicBadge = `<span style="font-family:monospace; font-size:0.72rem; color:#94a3b8; margin-left:0.3rem;">[${r.topic}]</span>`;
+      return `
+        <div class="result-row ${isExpected ? 'highlight-correct' : ''}">
+          <span class="rk">#${i + 1}</span>
+          <span class="tx">${truncate(r.text, 140)}${badge}${topicBadge}</span>
+          <span class="sc">${r.score.toFixed(3)}</span>
+        </div>
+      `;
+    }).join('');
+
+    resEl.innerHTML = topicMatchInfo + rows;
+  } catch (e) { err(status, e.message); }
+});
+
+let demo5Chart = null;
+document.getElementById('demo5PcaBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('demo5PcaBtn');
+  const model = demo5SelectedModel();
+  btn.disabled = true;
+  btn.textContent = `Embedding (${model})…`;
+  try {
+    const data = await api('/api/demo5/pca', { model });
+
+    // Group by domain
+    const byDomain = { code: [], legal: [], general: [] };
+    data.points.forEach(p => byDomain[p.domain].push(p));
+
+    const datasets = Object.entries(byDomain).map(([domain, pts]) => ({
+      label: domain + ' (' + pts.length + ')',
+      data: pts.map(p => ({ x: p.x, y: p.y, label: p.label, topic: p.topic, domain: p.domain })),
+      backgroundColor: DOMAIN_COLORS[domain],
+      pointRadius: 9,
+      pointHoverRadius: 12
+    }));
+
+    if (demo5Chart) demo5Chart.destroy();
+    demo5Chart = new Chart(document.getElementById('demo5Chart'), {
+      type: 'scatter',
+      data: { datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          title: { display: true, text: `PCA · ${data.model}`, color: '#fde68a' },
+          legend: { labels: { color: '#cbd5e1' } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => [`[${ctx.raw.domain}/${ctx.raw.topic}]`, ctx.raw.label]
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  } catch (e) { alert(e.message); }
+  finally {
+    btn.disabled = false;
+    btn.textContent = '📍 Побудувати PCA';
+  }
+});
+</script>
+
+</body>
+</html>

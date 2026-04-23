@@ -1,0 +1,33 @@
+{
+  "pairs": [
+    {"id": 1, "a": "I love this product", "b": "I hate this product"},
+    {"id": 2, "a": "This drug is safe for pregnancy", "b": "This drug is NOT safe for pregnancy"},
+    {"id": 3, "a": "Laptops with touchscreen", "b": "Laptops without touchscreen"},
+    {"id": 4, "a": "Happy customer reviews", "b": "Unhappy customer reviews"},
+    {"id": 5, "a": "Recommended for beginners", "b": "Not recommended for beginners"},
+    {"id": 6, "a": "The surgery was a complete success", "b": "The surgery was a complete failure"},
+    {"id": 7, "a": "Patient may take ibuprofen during pregnancy", "b": "Patient must NOT take ibuprofen during pregnancy"}
+  ],
+  "statements": [
+    {"id": 1, "text": "Acetaminophen is safe for use during pregnancy when taken at recommended doses.", "label": "safe"},
+    {"id": 2, "text": "Ibuprofen is NOT safe during the third trimester of pregnancy and should be avoided.", "label": "not_safe"},
+    {"id": 3, "text": "Prenatal vitamins are safe for pregnant women and are widely recommended by OB-GYNs.", "label": "safe"},
+    {"id": 4, "text": "Isotretinoin (Accutane) is NOT safe during pregnancy due to severe teratogenic effects.", "label": "not_safe"},
+    {"id": 5, "text": "Penicillin antibiotics are generally safe to take during pregnancy for bacterial infections.", "label": "safe"},
+    {"id": 6, "text": "Warfarin is NOT safe during pregnancy as it crosses the placenta and can cause fetal harm.", "label": "not_safe"},
+    {"id": 7, "text": "Insulin is safe for pregnant patients with diabetes since it does not cross the placenta.", "label": "safe"},
+    {"id": 8, "text": "ACE inhibitors are NOT safe during the second and third trimesters of pregnancy.", "label": "not_safe"},
+    {"id": 9, "text": "Levothyroxine is safe during pregnancy and is essential for hypothyroid patients.", "label": "safe"},
+    {"id": 10, "text": "Tetracycline antibiotics are NOT safe during pregnancy due to effects on fetal teeth and bones.", "label": "not_safe"},
+    {"id": 11, "text": "Folic acid supplementation is safe and strongly recommended before and during pregnancy.", "label": "safe"},
+    {"id": 12, "text": "Methotrexate is NOT safe during pregnancy and is contraindicated due to fetal risk.", "label": "not_safe"},
+    {"id": 13, "text": "Metformin is generally safe during pregnancy for gestational diabetes management.", "label": "safe"},
+    {"id": 14, "text": "Valproic acid is NOT safe during pregnancy due to the risk of neural tube defects.", "label": "not_safe"},
+    {"id": 15, "text": "Heparin is safe during pregnancy since it does not cross the placenta like warfarin does.", "label": "safe"},
+    {"id": 16, "text": "Lithium is NOT safe during the first trimester due to risk of cardiac malformations.", "label": "not_safe"},
+    {"id": 17, "text": "Amoxicillin is safe to use during pregnancy for treating common bacterial infections.", "label": "safe"},
+    {"id": 18, "text": "Statins are NOT safe during pregnancy and should be discontinued before conception.", "label": "not_safe"},
+    {"id": 19, "text": "Calcium supplements are safe during pregnancy and support fetal bone development.", "label": "safe"},
+    {"id": 20, "text": "Thalidomide is NOT safe during pregnancy and remains one of the most notorious teratogens.", "label": "not_safe"}
+  ]
+}

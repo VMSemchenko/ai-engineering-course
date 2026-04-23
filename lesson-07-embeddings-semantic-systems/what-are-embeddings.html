@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Що таке embeddings?</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: #e2e8f0;
+    line-height: 1.6;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  h1 {
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, #a5b4fc, #f0abfc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+  .subtitle { color: #94a3b8; font-size: 1.1rem; }
+
+  section {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  h2 {
+    color: #c4b5fd;
+    margin-bottom: 1rem;
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  h3 { color: #e9d5ff; margin: 1.5rem 0 0.75rem 0; font-size: 1.2rem; }
+  p { margin-bottom: 1rem; color: #cbd5e1; }
+
+  .problem-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .pair {
+    background: rgba(0,0,0,0.3);
+    padding: 1.2rem;
+    border-radius: 12px;
+    border-left: 4px solid;
+    text-align: center;
+  }
+  .pair.similar { border-color: #22c55e; }
+  .pair.different { border-color: #ef4444; }
+  .pair .words {
+    font-size: 1.8rem;
+    margin: 0.5rem 0;
+  }
+  .pair .label {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .pair.similar .verdict { color: #4ade80; }
+  .pair.different .verdict { color: #f87171; }
+
+  code {
+    background: rgba(0,0,0,0.4);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.9em;
+    color: #fde68a;
+  }
+
+  .vector-demo {
+    background: rgba(0,0,0,0.3);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+    font-family: 'Monaco', 'Consolas', monospace;
+    overflow-x: auto;
+  }
+  .vector-label {
+    display: inline-block;
+    width: 110px;
+    color: #a5b4fc;
+    font-weight: 600;
+  }
+  .vector-numbers {
+    color: #fbbf24;
+    font-size: 0.85rem;
+  }
+
+  .canvas-wrap {
+    background: rgba(0,0,0,0.4);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    justify-content: center;
+  }
+  .btn {
+    background: rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: #e9d5ff;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .btn:hover {
+    background: rgba(139, 92, 246, 0.35);
+    transform: translateY(-1px);
+  }
+  .btn.active {
+    background: rgba(139, 92, 246, 0.5);
+    border-color: #c4b5fd;
+  }
+
+  .similarity-demo {
+    background: rgba(0,0,0,0.3);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+  }
+  .sim-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 80px;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .sim-label { color: #e2e8f0; font-weight: 500; }
+  .sim-bar-wrap {
+    background: rgba(255,255,255,0.05);
+    height: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .sim-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+    border-radius: 12px;
+    transition: width 0.6s ease;
+  }
+  .sim-value {
+    text-align: right;
+    color: #fbbf24;
+    font-family: monospace;
+    font-weight: 600;
+  }
+
+  .training-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .step {
+    background: rgba(0,0,0,0.3);
+    padding: 1.2rem;
+    border-radius: 12px;
+    border-top: 3px solid #8b5cf6;
+  }
+  .step-num {
+    display: inline-block;
+    background: #8b5cf6;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 28px;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .step h4 { color: #e9d5ff; margin-bottom: 0.5rem; }
+  .step p { font-size: 0.9rem; color: #cbd5e1; margin: 0; }
+
+  .contrastive-box {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.15));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .contrastive-box h3 { color: #f0abfc; margin-top: 0; }
+
+  .push-pull {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .pp-item {
+    text-align: center;
+    padding: 1rem;
+    min-width: 200px;
+  }
+  .pp-arrow {
+    font-size: 2.5rem;
+    margin: 0.5rem 0;
+  }
+  .pp-pull .pp-arrow { color: #22c55e; }
+  .pp-push .pp-arrow { color: #ef4444; }
+  .pp-item strong { color: #e9d5ff; display: block; margin-top: 0.5rem; }
+
+  .hint {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-style: italic;
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+
+  .key-fact {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 4px solid #fbbf24;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+  }
+  .key-fact strong { color: #fde68a; }
+
+  .formula {
+    background: rgba(0, 0, 0, 0.45);
+    padding: 1.2rem 1.5rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+    font-family: 'Cambria Math', 'Georgia', serif;
+    font-size: 1.15rem;
+    text-align: center;
+    color: #fde68a;
+    overflow-x: auto;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+  }
+  .formula .frac {
+    display: inline-block;
+    vertical-align: middle;
+    text-align: center;
+    margin: 0 0.3rem;
+  }
+  .formula .num {
+    display: block;
+    border-bottom: 1px solid #fde68a;
+    padding-bottom: 2px;
+  }
+  .formula .den {
+    display: block;
+    padding-top: 2px;
+  }
+  .formula-label {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-family: -apple-system, sans-serif;
+    margin-top: 0.5rem;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .metric-card {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1.3rem;
+    border-radius: 12px;
+    border-top: 3px solid;
+  }
+  .metric-card.cosine { border-color: #8b5cf6; }
+  .metric-card.dot { border-color: #ec4899; }
+  .metric-card.euclidean { border-color: #22c55e; }
+  .metric-card h4 {
+    margin-top: 0;
+    margin-bottom: 0.6rem;
+    color: #e9d5ff;
+  }
+  .metric-card .range {
+    display: inline-block;
+    background: rgba(255,255,255,0.08);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #fbbf24;
+    margin-bottom: 0.6rem;
+  }
+  .metric-card p {
+    font-size: 0.92rem;
+    margin-bottom: 0.5rem;
+  }
+  .metric-card .use-when {
+    color: #86efac;
+    font-size: 0.88rem;
+    margin-top: 0.6rem;
+  }
+
+  .cosine-playground {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  .cosine-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  .cosine-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .stat-item {
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    border-left: 3px solid #8b5cf6;
+  }
+  .stat-item .k { color: #94a3b8; font-size: 0.85rem; display: block; }
+  .stat-item .v { color: #fbbf24; font-family: monospace; font-size: 1.1rem; font-weight: 600; }
+  .stat-item.highlight { border-color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
+  .angle-slider {
+    width: 100%;
+    margin-top: 1rem;
+  }
+  .slider-wrap { margin: 1rem 0; }
+  .slider-wrap label {
+    display: flex;
+    justify-content: space-between;
+    color: #cbd5e1;
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: #8b5cf6;
+  }
+  .verdict-box {
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    text-align: center;
+    font-weight: 600;
+  }
+  .verdict-similar { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+  .verdict-neutral { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+  .verdict-opposite { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+  @media (max-width: 720px) {
+    .cosine-grid { grid-template-columns: 1fr; }
+  }
+
+  footer {
+    text-align: center;
+    color: #64748b;
+    margin-top: 3rem;
+    padding: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 1rem; }
+    h1 { font-size: 1.8rem; }
+    .problem-box { grid-template-columns: 1fr; }
+    .sim-row { grid-template-columns: 100px 1fr 60px; font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🧠 Що таке embeddings?</h1>
+    <p class="subtitle">Як комп'ютер "розуміє", що слова схожі між собою</p>
+  </header>
+
+  <section>
+    <h2>🎯 Проблема</h2>
+    <p>
+      Уяви, що ти хочеш навчити комп'ютер відрізняти схожі поняття від різних.
+      Для людини очевидно: <strong>"кіт"</strong> і <strong>"кошеня"</strong> — це майже одне й те саме,
+      а <strong>"кіт"</strong> і <strong>"холодильник"</strong> — зовсім різні речі.
+    </p>
+    <p>
+      Але для комп'ютера це просто рядки символів. Як йому пояснити <em>семантичну</em> схожість?
+    </p>
+
+    <div class="problem-box">
+      <div class="pair similar">
+        <div class="label">Семантично схожі</div>
+        <div class="words">🐱 кіт &nbsp;↔&nbsp; 🐈 кошеня</div>
+        <div class="verdict">✓ комп'ютер має це зрозуміти</div>
+      </div>
+      <div class="pair different">
+        <div class="label">Семантично різні</div>
+        <div class="words">🐱 кіт &nbsp;↔&nbsp; ❄️ холодильник</div>
+        <div class="verdict">✗ ці слова далекі за змістом</div>
+      </div>
+    </div>
+
+    <p>
+      Просте порівняння рядків тут не допоможе — слова "кіт" і "кошеня" як набори літер <em>не більш схожі</em>,
+      ніж "кіт" і "кіно". Потрібен інший підхід.
+    </p>
+  </section>
+
+  <section>
+    <h2>💡 Рішення: Embedding</h2>
+    <p>
+      <strong>Embedding</strong> — це вектор чисел (список із десятків, сотень або тисяч значень),
+      який кодує <em>семантичний зміст</em> слова, речення чи документа.
+    </p>
+
+    <div class="vector-demo">
+      <div><span class="vector-label">🐱 кіт:</span><span class="vector-numbers">[ 0.12, -0.84,  0.45,  0.91, -0.23,  ...,  0.67, -0.11 ]</span></div>
+      <div><span class="vector-label">🐈 кошеня:</span><span class="vector-numbers">[ 0.15, -0.79,  0.48,  0.88, -0.19,  ...,  0.71, -0.09 ]</span></div>
+      <div><span class="vector-label">❄️ холодильник:</span><span class="vector-numbers">[-0.62,  0.31, -0.77,  0.04,  0.88,  ..., -0.43,  0.52 ]</span></div>
+    </div>
+
+    <p>
+      Бачиш? Вектори для <code>кіт</code> і <code>кошеня</code> мають схожі числа на тих самих позиціях.
+      А вектор <code>холодильник</code> — зовсім інакший.
+    </p>
+
+    <div class="key-fact">
+      <strong>Масштаб:</strong> популярна модель <code>OpenAI text-embedding-3-small</code> кодує кожне слово
+      або речення у вектор із <strong>1536 вимірів</strong>. Тобто 1536 чисел для кожного шматка тексту.
+      У великих моделях — до 3072 вимірів.
+    </div>
+  </section>
+
+  <section>
+    <h2>🗺️ Ключова ідея: близькість у просторі</h2>
+    <p>
+      Якщо уявити вектори як точки в багатовимірному просторі, то <strong>семантично схожі об'єкти
+      опиняються близько один до одного</strong>, а несхожі — далеко.
+    </p>
+    <p>
+      Натисни на кнопки, щоб побачити, як різні слова розташовуються у такому "просторі змісту"
+      (для наочності показано 2D проєкцію — справжні embeddings мають сотні вимірів):
+    </p>
+
+    <div class="canvas-wrap">
+      <canvas id="embedCanvas" width="1000" height="600"></canvas>
+    </div>
+
+    <div class="controls">
+      <button class="btn active" data-query="кіт">🐱 кіт</button>
+      <button class="btn" data-query="машина">🚗 машина</button>
+      <button class="btn" data-query="банан">🍌 банан</button>
+      <button class="btn" data-query="футбол">⚽ футбол</button>
+      <button class="btn" data-query="музика">🎵 музика</button>
+      <button class="btn" data-query="холодильник">❄️ холодильник</button>
+    </div>
+    <p class="hint">Обране слово підсвічено жовтим. Лінії до 3 найближчих сусідів.</p>
+
+    <h3>📏 Як вимірюють близькість?</h3>
+    <p>
+      Найпопулярніша метрика — <strong>косинусна схожість</strong> (cosine similarity).
+      Вона дає число від -1 до 1: <code>1</code> = ідентичні, <code>0</code> = не пов'язані, <code>-1</code> = протилежні.
+    </p>
+
+    <div class="similarity-demo" id="simDemo">
+      <!-- Заповнюється JS -->
+    </div>
+  </section>
+
+  <section>
+    <h2>📐 Математика: Vector math basics</h2>
+    <p>
+      Тепер подивимось «під капот». Embeddings — це просто вектори, а для роботи з ними
+      використовують три базові метрики. Почнемо з головної.
+    </p>
+
+    <h3>Косинусна подібність (cosine similarity)</h3>
+    <p>
+      Це <strong>головний інструмент</strong> у світі embeddings. Вона вимірює <em>кут</em>
+      між двома векторами, а не відстань між ними.
+    </p>
+
+    <div class="formula">
+      cos(θ) =
+      <span class="frac">
+        <span class="num">A · B</span>
+        <span class="den">‖A‖ × ‖B‖</span>
+      </span>
+      =
+      <span class="frac">
+        <span class="num">Σ Aᵢ Bᵢ</span>
+        <span class="den">√(Σ Aᵢ²) × √(Σ Bᵢ²)</span>
+      </span>
+      <div class="formula-label">A · B — скалярний добуток (dot product) · ‖A‖ — довжина (норма) вектора</div>
+    </div>
+
+    <p>Результат — число в діапазоні <code>[-1, 1]</code>:</p>
+    <ul style="padding-left: 1.5rem; color: #cbd5e1;">
+      <li><code>1.0</code> → вектори вказують <strong>в одному напрямку</strong> (ідентичний зміст)</li>
+      <li><code>0.0</code> → вектори <strong>перпендикулярні</strong> (незв'язані поняття)</li>
+      <li><code>-1.0</code> → вектори <strong>протилежні</strong> (антоніми, якщо таке буває в embedding space)</li>
+    </ul>
+
+    <h3>🎮 Інтерактивно: покрути вектор</h3>
+    <p>Пересувай повзунки — побачиш, як змінюється кут, cos(θ), dot product та евклідова відстань.</p>
+
+    <div class="cosine-playground">
+      <div class="cosine-grid">
+        <div>
+          <canvas id="cosineCanvas" width="500" height="500" style="background: rgba(15, 23, 42, 0.6); border-radius: 8px;"></canvas>
+        </div>
+        <div class="cosine-stats">
+          <div class="slider-wrap">
+            <label><span>Кут вектора A (θₐ)</span><span id="angleAVal">30°</span></label>
+            <input type="range" id="angleA" min="0" max="359" value="30">
+          </div>
+          <div class="slider-wrap">
+            <label><span>Довжина вектора A</span><span id="lenAVal">1.0</span></label>
+            <input type="range" id="lenA" min="30" max="200" value="100">
+          </div>
+          <div class="slider-wrap">
+            <label><span>Кут вектора B (θᵦ)</span><span id="angleBVal">75°</span></label>
+            <input type="range" id="angleB" min="0" max="359" value="75">
+          </div>
+          <div class="slider-wrap">
+            <label><span>Довжина вектора B</span><span id="lenBVal">1.0</span></label>
+            <input type="range" id="lenB" min="30" max="200" value="100">
+          </div>
+
+          <div class="stat-item highlight">
+            <span class="k">cos(θ) — cosine similarity</span>
+            <span class="v" id="cosVal">0.707</span>
+          </div>
+          <div class="stat-item">
+            <span class="k">кут між векторами</span>
+            <span class="v" id="angleBetween">45°</span>
+          </div>
+          <div class="stat-item">
+            <span class="k">A · B — dot product</span>
+            <span class="v" id="dotVal">0.707</span>
+          </div>
+          <div class="stat-item">
+            <span class="k">‖A − B‖ — евклідова відстань</span>
+            <span class="v" id="euclVal">0.765</span>
+          </div>
+
+          <div id="verdict" class="verdict-box verdict-similar">схожі (cos > 0.7)</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>⚖️ Dot product vs Cosine vs Euclidean — коли що використовувати?</h3>
+
+    <div class="metrics-grid">
+      <div class="metric-card cosine">
+        <h4>📐 Cosine Similarity</h4>
+        <div class="range">[-1, 1]</div>
+        <p><strong>Формула:</strong> <code>(A·B) / (‖A‖·‖B‖)</code></p>
+        <p>Вимірює <strong>кут</strong> між векторами, ігнорує довжину.</p>
+        <p class="use-when">
+          ✓ <strong>Default-вибір для embeddings.</strong> Коли важливий семантичний
+          напрямок, а не «сила» сигналу. OpenAI, Anthropic, Cohere — всі рекомендують саме cosine.
+        </p>
+      </div>
+
+      <div class="metric-card dot">
+        <h4>✖️ Dot Product</h4>
+        <div class="range">(-∞, +∞)</div>
+        <p><strong>Формула:</strong> <code>Σ Aᵢ · Bᵢ</code></p>
+        <p>Скалярний добуток — враховує і кут, <strong>і довжину</strong> векторів.</p>
+        <p class="use-when">
+          ✓ Коли довжина вектора несе сенс (напр., популярність, важливість документа).
+          ✓ Швидше за cosine — менше операцій. Використовується в моделях, де embeddings
+          <em>уже нормалізовані</em> (OpenAI).
+        </p>
+      </div>
+
+      <div class="metric-card euclidean">
+        <h4>📏 Euclidean Distance (L2)</h4>
+        <div class="range">[0, +∞)</div>
+        <p><strong>Формула:</strong> <code>√(Σ (Aᵢ − Bᵢ)²)</code></p>
+        <p>Пряма геометрична відстань між кінцями векторів.</p>
+        <p class="use-when">
+          ✓ Для даних, де абсолютні значення координат важливі (зображення, координати в просторі).
+          ✗ Для тексту зазвичай гірше за cosine — страждає від «прокляття розмірності»
+          в високих вимірах.
+        </p>
+      </div>
+    </div>
+
+    <h3>🔗 Нормалізація: магічний трюк</h3>
+    <p>
+      <strong>Нормалізувати вектор</strong> означає поділити його на власну довжину, щоб
+      отримати одиничний вектор (норма = 1):
+    </p>
+
+    <div class="formula">
+      Â = A / ‖A‖
+      <div class="formula-label">після нормалізації ‖Â‖ = 1</div>
+    </div>
+
+    <p>А тепер подивимось на формулу cosine для нормалізованих векторів:</p>
+
+    <div class="formula">
+      cos(θ) =
+      <span class="frac">
+        <span class="num">Â · B̂</span>
+        <span class="den">1 × 1</span>
+      </span>
+      = Â · B̂
+      <div class="formula-label">тобто cosine similarity = dot product (коли вектори нормалізовані)</div>
+    </div>
+
+    <div class="key-fact">
+      <strong>Практичний висновок:</strong> OpenAI та більшість сучасних моделей повертають
+      <em>уже нормалізовані</em> embeddings. Тому у векторних БД (Pinecone, Qdrant, Weaviate)
+      можна використовувати dot product — він швидший і дає ідентичний результат з cosine.
+      Це економить обчислення при мільйонах векторів.
+    </div>
+
+    <h3>🎯 Геометрична інтуїція: чому кут важливіший за довжину</h3>
+    <p>
+      Уяви два речення: <em>«Кіт сидить на килимі»</em> і <em>«Кіт сидить на килимі. Кіт сидить на килимі. Кіт сидить на килимі.»</em>
+    </p>
+    <p>
+      Друге — просто повторення. Семантично вони <strong>однакові</strong>. Але їхні
+      embeddings можуть мати різну довжину (довший текст → більша «енергія» у векторі).
+    </p>
+    <p>
+      <strong>Cosine similarity це ігнорує</strong> — дивиться тільки на напрямок. Euclidean —
+      ні, він побачить відстань між кінцями векторів і скаже «вони різні». Саме тому для
+      семантичного пошуку майже завжди використовують cosine: <em>зміст закодовано в напрямку,
+      а не в довжині</em>.
+    </p>
+
+    <div class="push-pull">
+      <div class="pp-item">
+        <strong style="color: #a5b4fc;">Cosine бачить:</strong>
+        <div class="pp-arrow">📐</div>
+        <p>Тільки кут між векторами<br><em>«в який бік вони показують»</em></p>
+      </div>
+      <div class="pp-item">
+        <strong style="color: #a5b4fc;">Euclidean бачить:</strong>
+        <div class="pp-arrow">📏</div>
+        <p>Відстань між точками<br><em>«наскільки далеко кінці векторів»</em></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>🔬 Звідки беруться ці числа?</h2>
+    <p>
+      Embeddings не пишуть вручну. Їх <strong>вчить нейромережа</strong> на гігантських корпусах тексту
+      (мільярди речень з інтернету, книг, статей).
+    </p>
+
+    <div class="training-steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Великий корпус</h4>
+        <p>Беремо терабайти тексту — Wikipedia, Common Crawl, книги, код.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Модель-трансформер</h4>
+        <p>Нейромережа читає текст і для кожного слова/речення видає вектор (спочатку випадковий).</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Навчання</h4>
+        <p>Модель коригує ваги так, щоб пов'язані за змістом тексти мали близькі вектори.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>Результат</h4>
+        <p>Після мільйонів ітерацій простір векторів стає "семантичною картою" мови.</p>
+      </div>
+    </div>
+
+    <div class="contrastive-box">
+      <h3>🎯 Contrastive learning за 30 секунд</h3>
+      <p>
+        Один із найефективніших способів вчити embeddings — <strong>contrastive learning</strong>.
+        Ідея проста, як двері:
+      </p>
+
+      <div class="push-pull">
+        <div class="pp-item pp-pull">
+          <strong>Схожі пари (positives)</strong>
+          <div class="pp-arrow">→ ←</div>
+          <p>Тягнемо ближче<br><em>"кіт" та "кошеня"</em></p>
+        </div>
+        <div class="pp-item pp-push">
+          <strong>Різні пари (negatives)</strong>
+          <div class="pp-arrow">← →</div>
+          <p>Відштовхуємо далі<br><em>"кіт" та "холодильник"</em></p>
+        </div>
+      </div>
+
+      <p style="margin-top: 1rem;">
+        Після мільйонів таких "тягань" вектори самі по собі вибудовуються в осмислений простір:
+        схожі речі — поруч, різні — на відстані. Модель <strong>не знає значень слів</strong> —
+        вона просто навчилася розташовувати їх так, щоб геометрія відображала зміст.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>✨ Чому це змінює все</h2>
+    <p>Коли в тебе є хороші embeddings, ти отримуєш суперздатність:</p>
+    <ul style="padding-left: 1.5rem; color: #cbd5e1;">
+      <li style="margin-bottom: 0.5rem;">🔍 <strong>Семантичний пошук</strong> — знаходь за змістом, а не за ключовими словами</li>
+      <li style="margin-bottom: 0.5rem;">🎯 <strong>RAG-системи</strong> — даєш LLM потрібний контекст з бази знань</li>
+      <li style="margin-bottom: 0.5rem;">📊 <strong>Кластеризація</strong> — автоматично групуй схожі документи</li>
+      <li style="margin-bottom: 0.5rem;">🤖 <strong>Рекомендації</strong> — "схоже на те, що тобі сподобалось"</li>
+      <li style="margin-bottom: 0.5rem;">🌍 <strong>Крос-мовність</strong> — "cat" і "кіт" опиняються поруч у просторі</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>AI Engineering Course · Заняття 7 · Embeddings &amp; Semantic Systems</p>
+  </footer>
+
+</div>
+
+<script>
+const words = {
+  "кіт":         { x: 0.15, y: 0.20, emoji: "🐱", group: "тварини" },
+  "кошеня":      { x: 0.18, y: 0.24, emoji: "🐈", group: "тварини" },
+  "собака":      { x: 0.22, y: 0.18, emoji: "🐕", group: "тварини" },
+  "щеня":        { x: 0.25, y: 0.22, emoji: "🐶", group: "тварини" },
+  "машина":      { x: 0.78, y: 0.35, emoji: "🚗", group: "транспорт" },
+  "автомобіль":  { x: 0.76, y: 0.38, emoji: "🚙", group: "транспорт" },
+  "велосипед":   { x: 0.72, y: 0.30, emoji: "🚲", group: "транспорт" },
+  "банан":       { x: 0.20, y: 0.75, emoji: "🍌", group: "їжа" },
+  "яблуко":      { x: 0.18, y: 0.72, emoji: "🍎", group: "їжа" },
+  "хліб":        { x: 0.25, y: 0.78, emoji: "🍞", group: "їжа" },
+  "футбол":      { x: 0.55, y: 0.80, emoji: "⚽", group: "спорт" },
+  "баскетбол":   { x: 0.58, y: 0.83, emoji: "🏀", group: "спорт" },
+  "теніс":       { x: 0.52, y: 0.78, emoji: "🎾", group: "спорт" },
+  "музика":      { x: 0.82, y: 0.68, emoji: "🎵", group: "мистецтво" },
+  "гітара":      { x: 0.85, y: 0.72, emoji: "🎸", group: "мистецтво" },
+  "пісня":       { x: 0.80, y: 0.65, emoji: "🎤", group: "мистецтво" },
+  "холодильник": { x: 0.50, y: 0.45, emoji: "❄️", group: "техніка" },
+  "плита":       { x: 0.48, y: 0.48, emoji: "🔥", group: "техніка" },
+  "комп'ютер":   { x: 0.45, y: 0.42, emoji: "💻", group: "техніка" }
+};
+
+const canvas = document.getElementById('embedCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+}
+
+function distance(a, b) {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
+
+function cosineSim(a, b) {
+  const an = Math.sqrt(a.x * a.x + a.y * a.y);
+  const bn = Math.sqrt(b.x * b.x + b.y * b.y);
+  if (an === 0 || bn === 0) return 0;
+  return (a.x * b.x + a.y * b.y) / (an * bn);
+}
+
+let selectedWord = "кіт";
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width;
+  const H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(30, 27, 75, 0.3)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 10; i++) {
+    ctx.beginPath();
+    ctx.moveTo((W / 10) * i, 0);
+    ctx.lineTo((W / 10) * i, H);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, (H / 10) * i);
+    ctx.lineTo(W, (H / 10) * i);
+    ctx.stroke();
+  }
+
+  const sel = words[selectedWord];
+  const distances = Object.entries(words)
+    .filter(([k]) => k !== selectedWord)
+    .map(([k, v]) => ({ key: k, data: v, d: distance(sel, v) }))
+    .sort((a, b) => a.d - b.d);
+  const neighbors = distances.slice(0, 3);
+
+  const selX = sel.x * W;
+  const selY = sel.y * H;
+  neighbors.forEach((n, i) => {
+    const nx = n.data.x * W;
+    const ny = n.data.y * H;
+    const opacity = 0.8 - i * 0.2;
+    ctx.strokeStyle = `rgba(251, 191, 36, ${opacity})`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(selX, selY);
+    ctx.lineTo(nx, ny);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  Object.entries(words).forEach(([key, w]) => {
+    const x = w.x * W;
+    const y = w.y * H;
+    const isSelected = key === selectedWord;
+    const isNeighbor = neighbors.some(n => n.key === key);
+
+    ctx.beginPath();
+    ctx.arc(x, y, isSelected ? 28 : 22, 0, Math.PI * 2);
+    if (isSelected) {
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, 30);
+      grad.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+      grad.addColorStop(1, 'rgba(251, 191, 36, 0.3)');
+      ctx.fillStyle = grad;
+    } else if (isNeighbor) {
+      ctx.fillStyle = 'rgba(139, 92, 246, 0.4)';
+    } else {
+      ctx.fillStyle = 'rgba(139, 92, 246, 0.15)';
+    }
+    ctx.fill();
+    ctx.strokeStyle = isSelected ? '#fbbf24' : (isNeighbor ? '#c4b5fd' : 'rgba(255,255,255,0.2)');
+    ctx.lineWidth = isSelected ? 3 : 1.5;
+    ctx.stroke();
+
+    ctx.font = `${isSelected ? 22 : 18}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(w.emoji, x, y);
+
+    ctx.font = `${isSelected ? 'bold ' : ''}13px -apple-system, sans-serif`;
+    ctx.fillStyle = isSelected ? '#fde68a' : (isNeighbor ? '#e9d5ff' : '#94a3b8');
+    ctx.fillText(key, x, y + (isSelected ? 42 : 36));
+  });
+}
+
+function updateSimTable() {
+  const sel = words[selectedWord];
+  const rows = Object.entries(words)
+    .filter(([k]) => k !== selectedWord)
+    .map(([k, v]) => ({
+      key: k,
+      emoji: v.emoji,
+      sim: 1 - distance(sel, v) / Math.SQRT2
+    }))
+    .sort((a, b) => b.sim - a.sim);
+
+  const top = rows.slice(0, 5);
+  const bottom = rows.slice(-2);
+  const chosen = [...top, ...bottom];
+
+  const html = chosen.map(r => `
+    <div class="sim-row">
+      <div class="sim-label">${r.emoji} ${r.key}</div>
+      <div class="sim-bar-wrap"><div class="sim-bar" style="width: ${Math.max(2, r.sim * 100)}%"></div></div>
+      <div class="sim-value">${r.sim.toFixed(2)}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('simDemo').innerHTML = `
+    <h3 style="margin-top:0;">Схожість до «${selectedWord}» ${words[selectedWord].emoji}</h3>
+    ${html}
+  `;
+}
+
+function selectWord(w) {
+  selectedWord = w;
+  document.querySelectorAll('.btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.query === w);
+  });
+  draw();
+  updateSimTable();
+}
+
+document.querySelectorAll('.btn').forEach(btn => {
+  btn.addEventListener('click', () => selectWord(btn.dataset.query));
+});
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  let closest = null;
+  let minD = Infinity;
+  Object.entries(words).forEach(([k, w]) => {
+    const d = Math.sqrt((w.x - x) ** 2 + (w.y - y) ** 2);
+    if (d < minD && d < 0.05) {
+      minD = d;
+      closest = k;
+    }
+  });
+  if (closest) selectWord(closest);
+});
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  draw();
+});
+
+resizeCanvas();
+draw();
+updateSimTable();
+
+// ═══════════════════════════════════════════════════════════════
+// Cosine similarity playground
+// ═══════════════════════════════════════════════════════════════
+const cosCanvas = document.getElementById('cosineCanvas');
+const cosCtx = cosCanvas.getContext('2d');
+
+const angleA = document.getElementById('angleA');
+const angleB = document.getElementById('angleB');
+const lenA = document.getElementById('lenA');
+const lenB = document.getElementById('lenB');
+
+const angleAVal = document.getElementById('angleAVal');
+const angleBVal = document.getElementById('angleBVal');
+const lenAVal = document.getElementById('lenAVal');
+const lenBVal = document.getElementById('lenBVal');
+
+const cosValEl = document.getElementById('cosVal');
+const angleBetweenEl = document.getElementById('angleBetween');
+const dotValEl = document.getElementById('dotVal');
+const euclValEl = document.getElementById('euclVal');
+const verdictEl = document.getElementById('verdict');
+
+function resizeCosCanvas() {
+  const rect = cosCanvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  cosCanvas.width = rect.width * dpr;
+  cosCanvas.height = rect.width * dpr;
+  cosCanvas.style.height = rect.width + 'px';
+  cosCtx.setTransform(1, 0, 0, 1, 0, 0);
+  cosCtx.scale(dpr, dpr);
+}
+
+function drawCosine() {
+  const rect = cosCanvas.getBoundingClientRect();
+  const W = rect.width;
+  const H = rect.width;
+  const cx = W / 2;
+  const cy = H / 2;
+  const maxR = Math.min(W, H) * 0.42;
+
+  cosCtx.clearRect(0, 0, W, H);
+
+  const aDeg = parseFloat(angleA.value);
+  const bDeg = parseFloat(angleB.value);
+  const aLen = parseFloat(lenA.value) / 100;
+  const bLen = parseFloat(lenB.value) / 100;
+
+  const aRad = (aDeg * Math.PI) / 180;
+  const bRad = (bDeg * Math.PI) / 180;
+
+  const ax = Math.cos(aRad) * aLen;
+  const ay = Math.sin(aRad) * aLen;
+  const bx = Math.cos(bRad) * bLen;
+  const by = Math.sin(bRad) * bLen;
+
+  const dot = ax * bx + ay * by;
+  const normA = Math.sqrt(ax * ax + ay * ay);
+  const normB = Math.sqrt(bx * bx + by * by);
+  const cosSim = normA && normB ? dot / (normA * normB) : 0;
+  const angleBetween = Math.acos(Math.max(-1, Math.min(1, cosSim))) * 180 / Math.PI;
+  const eucl = Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
+
+  cosCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+  cosCtx.lineWidth = 1;
+  for (let r = 0.25; r <= 1; r += 0.25) {
+    cosCtx.beginPath();
+    cosCtx.arc(cx, cy, maxR * r, 0, Math.PI * 2);
+    cosCtx.stroke();
+  }
+  cosCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+  cosCtx.beginPath();
+  cosCtx.moveTo(0, cy); cosCtx.lineTo(W, cy);
+  cosCtx.moveTo(cx, 0); cosCtx.lineTo(cx, H);
+  cosCtx.stroke();
+
+  cosCtx.fillStyle = '#64748b';
+  cosCtx.font = '11px monospace';
+  cosCtx.textAlign = 'center';
+  cosCtx.fillText('0°', cx + maxR + 12, cy + 4);
+  cosCtx.fillText('90°', cx, cy - maxR - 8);
+  cosCtx.fillText('180°', cx - maxR - 16, cy + 4);
+  cosCtx.fillText('270°', cx, cy + maxR + 16);
+
+  const aPx = cx + ax * maxR;
+  const aPy = cy - ay * maxR;
+  const bPx = cx + bx * maxR;
+  const bPy = cy - by * maxR;
+
+  const arcR = 35;
+  cosCtx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
+  cosCtx.fillStyle = 'rgba(251, 191, 36, 0.1)';
+  cosCtx.lineWidth = 2;
+  cosCtx.beginPath();
+  cosCtx.moveTo(cx, cy);
+  const startAngle = -aRad;
+  const endAngle = -bRad;
+  let ccw = false;
+  let diff = ((bDeg - aDeg) + 360) % 360;
+  if (diff > 180) ccw = true;
+  cosCtx.arc(cx, cy, arcR, startAngle, endAngle, ccw);
+  cosCtx.closePath();
+  cosCtx.fill();
+  cosCtx.stroke();
+
+  cosCtx.fillStyle = '#fbbf24';
+  cosCtx.font = 'bold 13px monospace';
+  const midAngle = (aRad + bRad) / 2 + (ccw ? Math.PI : 0);
+  const midAdjusted = Math.abs(bRad - aRad) > Math.PI ? midAngle + Math.PI : (aRad + bRad) / 2;
+  cosCtx.fillText(`θ=${angleBetween.toFixed(0)}°`,
+    cx + Math.cos(midAdjusted) * (arcR + 18),
+    cy - Math.sin(midAdjusted) * (arcR + 18));
+
+  drawVector(cx, cy, aPx, aPy, '#8b5cf6', 'A', aLen);
+  drawVector(cx, cy, bPx, bPy, '#ec4899', 'B', bLen);
+
+  angleAVal.textContent = aDeg + '°';
+  angleBVal.textContent = bDeg + '°';
+  lenAVal.textContent = aLen.toFixed(2);
+  lenBVal.textContent = bLen.toFixed(2);
+
+  cosValEl.textContent = cosSim.toFixed(3);
+  angleBetweenEl.textContent = angleBetween.toFixed(1) + '°';
+  dotValEl.textContent = dot.toFixed(3);
+  euclValEl.textContent = eucl.toFixed(3);
+
+  verdictEl.classList.remove('verdict-similar', 'verdict-neutral', 'verdict-opposite');
+  if (cosSim > 0.7) {
+    verdictEl.classList.add('verdict-similar');
+    verdictEl.textContent = '✓ схожі (cos > 0.7) — у векторних БД це вважається близьким';
+  } else if (cosSim > 0.2) {
+    verdictEl.classList.add('verdict-neutral');
+    verdictEl.textContent = '~ слабкий зв\'язок (0.2 < cos < 0.7)';
+  } else if (cosSim > -0.2) {
+    verdictEl.classList.add('verdict-neutral');
+    verdictEl.textContent = '○ незв\'язані (cos ≈ 0) — перпендикулярні вектори';
+  } else {
+    verdictEl.classList.add('verdict-opposite');
+    verdictEl.textContent = '✗ протилежні (cos < -0.2)';
+  }
+}
+
+function drawVector(x1, y1, x2, y2, color, label, lenVal) {
+  cosCtx.strokeStyle = color;
+  cosCtx.fillStyle = color;
+  cosCtx.lineWidth = 3;
+
+  cosCtx.beginPath();
+  cosCtx.moveTo(x1, y1);
+  cosCtx.lineTo(x2, y2);
+  cosCtx.stroke();
+
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const headLen = 12;
+  cosCtx.beginPath();
+  cosCtx.moveTo(x2, y2);
+  cosCtx.lineTo(
+    x2 - headLen * Math.cos(angle - Math.PI / 6),
+    y2 - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  cosCtx.lineTo(
+    x2 - headLen * Math.cos(angle + Math.PI / 6),
+    y2 - headLen * Math.sin(angle + Math.PI / 6)
+  );
+  cosCtx.closePath();
+  cosCtx.fill();
+
+  cosCtx.beginPath();
+  cosCtx.arc(x2, y2, 5, 0, Math.PI * 2);
+  cosCtx.fill();
+
+  cosCtx.font = 'bold 16px -apple-system, sans-serif';
+  const offX = (x2 - x1) > 0 ? 14 : -20;
+  const offY = (y2 - y1) > 0 ? 18 : -10;
+  cosCtx.fillText(label, x2 + offX, y2 + offY);
+}
+
+[angleA, angleB, lenA, lenB].forEach(el => {
+  el.addEventListener('input', drawCosine);
+});
+
+window.addEventListener('resize', () => {
+  resizeCosCanvas();
+  drawCosine();
+});
+
+resizeCosCanvas();
+drawCosine();
+</script>
+
+</body>
+</html>

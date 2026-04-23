@@ -1,0 +1,36 @@
+{
+  "description": "Три домени (code, legal, general) з семантично еквівалентними парами. Якщо embedder добре розуміє семантику — пари сидять поруч. Якщо ні — кластеризується за поверхневою лексикою домену.",
+  "chunks": [
+    {"id": 1, "domain": "code", "topic": "sort-array", "text": "def sort_list(arr): return sorted(arr, reverse=False)"},
+    {"id": 2, "domain": "legal", "topic": "sort-array", "text": "Section 3.1: All items in the inventory register shall be arranged in ascending order by numeric value prior to audit submission."},
+    {"id": 3, "domain": "general", "topic": "sort-array", "text": "Arrange the numbers from smallest to largest. That way you can find things easily later."},
+
+    {"id": 4, "domain": "code", "topic": "user-auth", "text": "if not user.is_authenticated: raise HTTPException(401, 'Unauthorized')"},
+    {"id": 5, "domain": "legal", "topic": "user-auth", "text": "Clause 7.2(b): Access to the System shall be denied to any party who fails to present valid credentials in accordance with the authentication protocol specified herein."},
+    {"id": 6, "domain": "general", "topic": "user-auth", "text": "You need to log in first. If you don't have an account, the system will just turn you away."},
+
+    {"id": 7, "domain": "code", "topic": "data-deletion", "text": "db.session.query(User).filter(User.id == user_id).delete(); db.session.commit()"},
+    {"id": 8, "domain": "legal", "topic": "data-deletion", "text": "Article 17 (GDPR): The data subject shall have the right to obtain from the controller the erasure of personal data concerning him or her without undue delay."},
+    {"id": 9, "domain": "general", "topic": "data-deletion", "text": "When someone asks to remove their info, you just take it out of the records and move on."},
+
+    {"id": 10, "domain": "code", "topic": "retry-logic", "text": "for attempt in range(max_retries):\n    try: return fetch(url)\n    except ConnectionError: time.sleep(2 ** attempt)"},
+    {"id": 11, "domain": "legal", "topic": "retry-logic", "text": "Clause 9.4: In the event of a transmission failure, the transmitting party shall undertake no fewer than three (3) additional attempts, with exponentially increasing intervals between each."},
+    {"id": 12, "domain": "general", "topic": "retry-logic", "text": "If the first try fails, just keep trying a few more times — but wait a bit longer each time so you don't spam the server."},
+
+    {"id": 13, "domain": "code", "topic": "payment-refund", "text": "stripe.Refund.create(charge=charge_id, amount=refund_amount_cents)"},
+    {"id": 14, "domain": "legal", "topic": "payment-refund", "text": "Section 11.1: The Merchant hereby agrees to refund the Customer the full purchase price within fourteen (14) business days of a valid cancellation request."},
+    {"id": 15, "domain": "general", "topic": "payment-refund", "text": "Give the customer their money back if they don't like the product. Usually takes a couple weeks."},
+
+    {"id": 16, "domain": "code", "topic": "rate-limiting", "text": "@limiter.limit('10/minute')\ndef api_endpoint(): return jsonify(data)"},
+    {"id": 17, "domain": "legal", "topic": "rate-limiting", "text": "Section 4.3: The Service Provider reserves the right to throttle or restrict the frequency of requests submitted by any individual user at its sole discretion."},
+    {"id": 18, "domain": "general", "topic": "rate-limiting", "text": "Don't let anyone hammer the server too fast. Cap them to a few requests per minute."}
+  ],
+  "presets": [
+    {"id": "q_general_sort", "domain_source": "general", "text": "how to put numbers in order from small to big", "expected_topic": "sort-array"},
+    {"id": "q_general_auth", "domain_source": "general", "text": "block people who didn't log in", "expected_topic": "user-auth"},
+    {"id": "q_general_delete", "domain_source": "general", "text": "remove user information from the system", "expected_topic": "data-deletion"},
+    {"id": "q_code_retry", "domain_source": "code", "text": "exponential backoff on HTTP failure", "expected_topic": "retry-logic"},
+    {"id": "q_legal_refund", "domain_source": "legal", "text": "obligation to reimburse customer upon cancellation", "expected_topic": "payment-refund"},
+    {"id": "q_general_ratelimit", "domain_source": "general", "text": "stop users from sending too many requests", "expected_topic": "rate-limiting"}
+  ]
+}
