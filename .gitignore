@@ -2,3 +2,4 @@
 __pycache__/
 .claude/
 .env
+.DS_Store
