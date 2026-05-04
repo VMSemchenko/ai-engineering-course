@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multi-LLM Chat Battle · Lesson 10 Demo</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#15181d; --panel2:#1d2127; --line:#2a2f37;
+    --text:#e6e8ec; --muted:#9aa3ad; --accent:#7cd1ff;
+    --ok:#9be37c; --warn:#ff7676; --gold:#ffd166;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;height:100%}
+  .wrap{max-width:1400px;margin:0 auto;padding:18px;height:100%;display:flex;flex-direction:column;gap:14px}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;flex-wrap:wrap}
+  header h1{margin:0;font-size:20px;letter-spacing:.5px}
+  header .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{padding:4px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:11px;color:var(--muted)}
+  .badge.live{border-color:var(--ok);color:var(--ok)}
+  .badge.mock{border-color:var(--gold);color:var(--gold)}
+
+  .input-row{display:flex;gap:10px}
+  .input-row input{flex:1;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:14px 18px;font:inherit;font-size:14px;outline:none}
+  .input-row input:focus{border-color:var(--accent)}
+  .btn{background:var(--accent);color:#0b0d10;border:1px solid var(--accent);border-radius:10px;padding:10px 22px;cursor:pointer;font:inherit;font-size:13px;font-weight:700;letter-spacing:.5px}
+  .btn:hover{filter:brightness(1.1)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.alt{background:var(--panel2);color:var(--text);border-color:var(--line);font-weight:500}
+  .btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
+
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--muted)}
+  .controls label{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .controls .stat{padding:4px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:11px}
+  .controls .stat b{color:var(--accent)}
+
+  .battle{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;min-height:0}
+  @media(max-width:980px){.battle{grid-template-columns:1fr}}
+  .lane{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-height:300px}
+  .lane.killed{opacity:.5}
+  .lane-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .lane-head .model{display:flex;align-items:center;gap:10px}
+  .lane-head .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;background:#3a4654;transition:all .3s ease}
+  .lane.streaming .dot{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 1s infinite}
+  .lane.done .dot{background:var(--ok)}
+  .lane.error .dot{background:var(--warn)}
+  @keyframes pulse{50%{opacity:.5}}
+  .lane-head .name{font-weight:700;font-size:13px}
+  .lane-head .provider{color:var(--muted);font-size:11px}
+  .lane-head .kill{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:10px;font:inherit;font-size:10px}
+  .lane-head .kill:hover{border-color:var(--warn);color:var(--warn)}
+  .lane-head .kill.on{background:var(--warn);color:#fff;border-color:var(--warn)}
+
+  .lane-body{flex:1;padding:14px;overflow-y:auto;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#dde2e8}
+  .lane-body .placeholder{color:var(--muted);font-style:italic}
+  .lane-body .err{color:var(--warn);background:rgba(255,118,118,0.08);padding:8px 10px;border-radius:6px;border:1px solid var(--warn);font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .cursor{display:inline-block;width:7px;height:14px;background:var(--accent);vertical-align:middle;margin-left:1px;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .lane-foot{padding:8px 14px;border-top:1px solid var(--line);background:var(--panel2);display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;flex-wrap:wrap;gap:6px}
+  .lane-foot .stat-item b{color:#fff}
+  .lane.winner .lane-foot{background:rgba(255,209,102,0.1);border-top-color:var(--gold)}
+  .lane.winner .lane-foot::before{content:"🏆 ";font-size:14px}
+
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:780px){.summary{grid-template-columns:repeat(2,1fr)}}
+  .sum-card{padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .sum-card .lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .sum-card .val{font-size:20px;font-weight:700;margin-top:4px}
+  .sum-card .val b{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>⚔️ Multi-LLM Chat Battle</h1>
+    <div class="sub">Lesson 10 demo · streaming · concurrency · cost tracking · chaos engineering</div>
+  </div>
+  <div class="badges" id="badges">
+    <span class="badge mock" id="modeBadge">MOCK MODE</span>
+    <span class="badge" id="concBadge">concurrency: 0/6</span>
+    <span class="badge" id="activeBadge">active: 0</span>
+  </div>
+</header>
+
+<div class="input-row">
+  <input id="prompt" type="text" placeholder='Питання (наприклад: "What is RAG?", "Explain async/await", "Write a haiku")' autocomplete="off">
+  <button class="btn" id="sendBtn">⚔️ Battle</button>
+  <button class="btn alt" id="clearBtn">↺ Clear</button>
+</div>
+
+<div class="controls">
+  <span style="color:var(--muted)">Chaos:</span>
+  <label><input type="checkbox" id="chaos1"> Kill GPT-4o-mini (50% fail)</label>
+  <label><input type="checkbox" id="chaos2"> Kill Gemini (50% fail)</label>
+  <label><input type="checkbox" id="chaos3"> Kill Llama (50% fail)</label>
+  <span style="margin-left:auto" class="stat">aborted: <b id="abortedStat">0</b></span>
+  <span class="stat">total cost: $<b id="totalCost">0.0000</b></span>
+</div>
+
+<div class="battle" id="battle"></div>
+
+<div class="summary" id="summary"></div>
+
+</div>
+
+<script>
+let MODELS = [];
+let activeStream = null;
+
+async function loadConfig() {
+  const r = await fetch("/api/models");
+  const data = await r.json();
+  MODELS = data.models;
+  document.getElementById("modeBadge").textContent = data.mock_mode ? "MOCK MODE" : "LIVE (OpenRouter)";
+  document.getElementById("modeBadge").className = "badge " + (data.mock_mode ? "mock" : "live");
+  renderLanes();
+  pollHealth();
+}
+
+function renderLanes() {
+  const battle = document.getElementById("battle");
+  battle.innerHTML = "";
+  for (const m of MODELS) {
+    const lane = document.createElement("div");
+    lane.className = "lane";
+    lane.id = "lane-" + safeId(m.id);
+    lane.innerHTML = `
+      <div class="lane-head">
+        <div class="model">
+          <span class="dot"></span>
+          <div>
+            <div class="name" style="color:${m.color}">${m.label}</div>
+            <div class="provider">${m.provider}</div>
+          </div>
+        </div>
+        <button class="kill" data-model="${m.id}">kill 50%</button>
+      </div>
+      <div class="lane-body"><div class="placeholder">↑ натисни Battle</div></div>
+      <div class="lane-foot">
+        <span class="stat-item">ttft: <b>—</b></span>
+        <span class="stat-item">total: <b>—</b></span>
+        <span class="stat-item">tok: <b>—</b></span>
+        <span class="stat-item">$<b>—</b></span>
+      </div>
+    `;
+    battle.appendChild(lane);
+
+    lane.querySelector(".kill").addEventListener("click", async (e) => {
+      const btn = e.target;
+      btn.classList.toggle("on");
+      const failRate = btn.classList.contains("on") ? 0.5 : 0.0;
+      await fetch("/api/chaos", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({model_id: m.id, fail_rate: failRate}),
+      });
+    });
+  }
+}
+
+function safeId(s) { return s.replace(/[^a-z0-9]/gi, "_"); }
+
+function setLaneState(modelId, state) {
+  const lane = document.getElementById("lane-" + safeId(modelId));
+  if (!lane) return;
+  lane.classList.remove("streaming", "done", "error", "winner");
+  if (state) lane.classList.add(state);
+}
+
+function appendToken(modelId, content) {
+  const lane = document.getElementById("lane-" + safeId(modelId));
+  const body = lane.querySelector(".lane-body");
+  const placeholder = body.querySelector(".placeholder");
+  if (placeholder) placeholder.remove();
+  let cursor = body.querySelector(".cursor");
+  if (!cursor) {
+    cursor = document.createElement("span");
+    cursor.className = "cursor";
+    body.appendChild(cursor);
+  }
+  const text = document.createTextNode(content);
+  body.insertBefore(text, cursor);
+  body.scrollTop = body.scrollHeight;
+}
+
+function setStats(modelId, stats) {
+  const lane = document.getElementById("lane-" + safeId(modelId));
+  const cells = lane.querySelectorAll(".lane-foot b");
+  cells[0].textContent = stats.ttft_ms + "ms";
+  cells[1].textContent = stats.total_ms + "ms";
+  cells[2].textContent = stats.tokens + " (" + stats.tokens_per_sec + "/s)";
+  cells[3].textContent = stats.cost_usd.toFixed(6);
+  // remove cursor
+  const cursor = lane.querySelector(".cursor");
+  if (cursor) cursor.remove();
+}
+
+function setError(modelId, msg) {
+  const lane = document.getElementById("lane-" + safeId(modelId));
+  const body = lane.querySelector(".lane-body");
+  body.innerHTML = `<div class="err">✕ ${msg}</div>`;
+}
+
+function pickWinner() {
+  // По швидкості total_ms (хто швидше повністю згенерував)
+  let best = null;
+  let bestTime = Infinity;
+  for (const lane of document.querySelectorAll(".lane.done")) {
+    // 2-ге <b> = total time (cells indexed: 0=ttft, 1=total, 2=tokens, 3=cost)
+    const cells = lane.querySelectorAll(".lane-foot b");
+    if (cells.length < 2) continue;
+    const ms = parseInt(cells[1].textContent);
+    if (!isNaN(ms) && ms < bestTime) {
+      bestTime = ms;
+      best = lane;
+    }
+  }
+  if (best) best.classList.add("winner");
+}
+
+document.getElementById("sendBtn").addEventListener("click", startBattle);
+document.getElementById("prompt").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") startBattle();
+});
+document.getElementById("clearBtn").addEventListener("click", () => {
+  renderLanes();
+  document.getElementById("summary").innerHTML = "";
+});
+
+async function startBattle() {
+  const message = document.getElementById("prompt").value.trim();
+  if (!message) return;
+
+  // Clear lanes
+  for (const m of MODELS) {
+    setLaneState(m.id, "streaming");
+    const lane = document.getElementById("lane-" + safeId(m.id));
+    lane.querySelector(".lane-body").innerHTML = "";
+    const cells = lane.querySelectorAll(".lane-foot b");
+    cells.forEach(c => c.textContent = "—");
+  }
+
+  if (activeStream) activeStream.abort();
+  const controller = new AbortController();
+  activeStream = controller;
+
+  document.getElementById("sendBtn").disabled = true;
+
+  try {
+    const resp = await fetch("/api/battle", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({message}),
+      signal: controller.signal,
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+      for (const evt of events) {
+        if (!evt.startsWith("data: ")) continue;
+        try {
+          const data = JSON.parse(evt.slice(6));
+          handleEvent(data);
+        } catch (err) {
+          console.error("Failed to parse SSE event:", err, evt);
+        }
+      }
+    }
+  } catch (e) {
+    if (e.name !== "AbortError") console.error(e);
+  } finally {
+    document.getElementById("sendBtn").disabled = false;
+    pickWinner();
+    refreshUsage();
+  }
+}
+
+function handleEvent(evt) {
+  if (evt.type === "start") return;
+  if (evt.type === "all_done") return;
+
+  const modelId = evt.model_id;
+  if (evt.type === "token") {
+    appendToken(modelId, evt.content);
+  } else if (evt.type === "done") {
+    setStats(modelId, evt.stats);
+    setLaneState(modelId, "done");
+  } else if (evt.type === "error") {
+    setError(modelId, evt.message);
+    setLaneState(modelId, "error");
+  }
+}
+
+async function pollHealth() {
+  setInterval(async () => {
+    try {
+      const r = await fetch("/api/health");
+      const h = await r.json();
+      document.getElementById("concBadge").textContent = `concurrency: ${h.concurrency_used}/${h.concurrency_limit}`;
+      document.getElementById("activeBadge").textContent = `active: ${h.active_streams}`;
+      document.getElementById("abortedStat").textContent = h.aborted_streams;
+    } catch (e) {}
+  }, 1000);
+}
+
+async function refreshUsage() {
+  try {
+    const r = await fetch("/api/usage");
+    const u = await r.json();
+    document.getElementById("totalCost").textContent = u.total.cost_usd.toFixed(6);
+
+    const sum = document.getElementById("summary");
+    sum.innerHTML = "";
+    sum.appendChild(card("Total Requests", u.total.requests));
+    sum.appendChild(card("Total Tokens", u.total.tokens.toLocaleString()));
+    sum.appendChild(card("Total Cost", "$" + u.total.cost_usd.toFixed(6), true));
+    sum.appendChild(card("Errors", u.total.errors, false, u.total.errors > 0));
+  } catch (e) {}
+}
+
+function card(lbl, val, accent, warn) {
+  const div = document.createElement("div");
+  div.className = "sum-card";
+  const valStyle = accent ? 'style="color:var(--accent)"' : (warn ? 'style="color:var(--warn)"' : '');
+  div.innerHTML = `<div class="lbl">${lbl}</div><div class="val" ${valStyle}>${val}</div>`;
+  return div;
+}
+
+loadConfig();
+</script>
+</body>
+</html>
