@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Agents & Tool Orchestration — заняття 11</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#15181d; --panel2:#1d2127; --line:#2a2f37;
+    --text:#e6e8ec; --muted:#9aa3ad;
+    --accent:#7cd1ff; --accent2:#ffd166; --accent3:#9be37c; --accent4:#c79bff; --accent5:#ff7eb6;
+    --warn:#ff7676; --ok:#9be37c;
+    --think:#c79bff; --act:#7cd1ff; --observe:#9be37c; --tool:#ffd166;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .wrap{max-width:1320px;margin:0 auto;padding:24px}
+  h1{font-size:30px;letter-spacing:.5px;margin:0 0 6px}
+  h1 small{color:var(--muted);font-weight:400;font-size:14px;display:block;margin-top:6px}
+  .sub{color:var(--muted);margin-bottom:24px;font-size:14px}
+
+  .toc{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 30px;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+  .toc a{color:var(--accent);text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2)}
+  .toc a:hover{border-color:var(--accent)}
+
+  section{margin:36px 0;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;scroll-margin-top:20px}
+  section h2{font-size:20px;margin:0 0 8px;color:#fff;letter-spacing:.5px}
+  section h2 .num{color:var(--accent);font-weight:400}
+  section .lead{color:var(--muted);margin:0 0 18px;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-size:14px;line-height:1.6}
+  section h3{font-size:14px;margin:18px 0 8px;color:#fff;text-transform:uppercase;letter-spacing:1.2px}
+
+  .pad{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;line-height:1.65;color:#cdd5de}
+  .pad b{color:#fff}
+  .pad code{background:#11151a;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
+  @media(max-width:980px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .card h4{margin:0 0 8px;font-size:13px;color:#fff;letter-spacing:.5px}
+  .card p{margin:0;color:#cdd5de;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-size:13px}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-size:13px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;background:var(--panel2)}
+  td b{color:#fff}
+  td code{background:#11151a;border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent)}
+
+  pre{background:#0a0c0f;border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:12px;line-height:1.5;color:#cdd5de}
+  pre .k{color:#ff7eb6}
+  pre .s{color:#9be37c}
+  pre .c{color:#6a737d;font-style:italic}
+  pre .n{color:#7cd1ff}
+  pre .f{color:#ffd166}
+
+  .demo{margin-top:14px;padding:14px;background:#0a0c0f;border:1px solid var(--line);border-radius:10px}
+  .demo .demoHead{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .demo .demoHead .tag{padding:3px 10px;border-radius:999px;background:var(--accent);color:#0b0d10;font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
+  .demo .demoHead h4{margin:0;font-size:13px;color:#fff}
+  .btn{background:#26303b;color:#fff;border:1px solid #3a4654;border-radius:8px;padding:7px 14px;cursor:pointer;font:inherit;font-size:12px;font-weight:600}
+  .btn:hover{border-color:#57667a}
+  .btn.primary{background:var(--accent);color:#0b0d10;border-color:var(--accent)}
+  .btn.warn{background:var(--warn);color:#fff;border-color:var(--warn)}
+  .btn.ok{background:var(--ok);color:#0b0d10;border-color:var(--ok)}
+
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:11px;color:var(--muted)}
+  .pill.ok{background:rgba(155,227,124,0.15);border-color:var(--ok);color:var(--ok)}
+  .pill.warn{background:rgba(255,118,118,0.15);border-color:var(--warn);color:var(--warn)}
+
+  .sev{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-right:6px}
+  .sev.crit{background:rgba(255,118,118,0.2);color:var(--warn);border:1px solid var(--warn)}
+  .sev.med{background:rgba(255,209,102,0.2);color:var(--accent2);border:1px solid var(--accent2)}
+  .sev.low{background:rgba(155,227,124,0.2);color:var(--ok);border:1px solid var(--ok)}
+
+  /* ReAct cycle animation */
+  .reactCycle{display:flex;align-items:center;justify-content:center;gap:18px;padding:30px;flex-wrap:wrap}
+  .reactNode{position:relative;width:140px;height:140px;border-radius:50%;border:3px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--panel2);transition:all .5s ease;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+  .reactNode.think{border-color:var(--think)}
+  .reactNode.act{border-color:var(--act)}
+  .reactNode.observe{border-color:var(--observe)}
+  .reactNode.active{transform:scale(1.15);box-shadow:0 0 24px rgba(255,255,255,0.2)}
+  .reactNode.think.active{box-shadow:0 0 24px var(--think);background:rgba(199,155,255,0.15)}
+  .reactNode.act.active{box-shadow:0 0 24px var(--act);background:rgba(124,209,255,0.15)}
+  .reactNode.observe.active{box-shadow:0 0 24px var(--observe);background:rgba(155,227,124,0.15)}
+  .reactNode .icon{font-size:32px;margin-bottom:4px}
+  .reactNode .name{font-size:13px;font-weight:700;color:#fff;letter-spacing:1px;text-transform:uppercase}
+  .reactNode .label{font-size:11px;color:var(--muted);margin-top:2px}
+  .reactArrow{font-size:32px;color:var(--muted);transition:color .5s ease}
+  .reactArrow.active{color:var(--accent)}
+  .reactLog{margin-top:20px;padding:14px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;min-height:140px;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#cdd5de}
+  .reactLog .entry{margin:4px 0;padding-left:20px;position:relative;opacity:0;animation:fadeIn .4s ease forwards}
+  .reactLog .entry::before{position:absolute;left:0;font-weight:700;width:18px}
+  .reactLog .entry.think{color:var(--think)}
+  .reactLog .entry.think::before{content:"💭"}
+  .reactLog .entry.act{color:var(--act)}
+  .reactLog .entry.act::before{content:"⚡"}
+  .reactLog .entry.observe{color:var(--observe)}
+  .reactLog .entry.observe::before{content:"👁"}
+  .reactLog .entry.final{color:var(--ok);font-weight:700}
+  .reactLog .entry.final::before{content:"✓"}
+  @keyframes fadeIn{to{opacity:1}}
+
+  /* Tool calling */
+  .toolDemo{display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;align-items:center}
+  @media(max-width:780px){.toolDemo{grid-template-columns:1fr;text-align:center}.arrowMid{display:none}}
+  .agentBox,.toolBox{padding:18px;background:var(--panel2);border:2px solid var(--line);border-radius:12px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+  .agentBox{border-color:var(--accent4)}
+  .toolBox{border-color:var(--tool)}
+  .agentBox .ttl,.toolBox .ttl{font-weight:700;color:#fff;font-size:14px;margin-bottom:6px}
+  .agentBox .desc,.toolBox .desc{font-size:11px;color:var(--muted)}
+  .arrowMid{font-size:24px;color:var(--muted);text-align:center;animation:none}
+  .arrowMid.flowing{color:var(--accent);animation:slide 1.2s ease infinite}
+  @keyframes slide{0%{transform:translateX(-10px);opacity:.3}50%{opacity:1}100%{transform:translateX(10px);opacity:.3}}
+  .toolList{margin-top:14px;display:grid;gap:8px}
+  .toolItem{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:12px;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;transition:all .3s ease}
+  .toolItem.calling{border-color:var(--tool);background:rgba(255,209,102,0.08)}
+  .toolItem.done{border-color:var(--ok);background:rgba(155,227,124,0.06)}
+  .toolItem .nm{font-weight:600;color:#fff;font-family:ui-monospace,Menlo,monospace}
+  .toolItem .args{color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:11px}
+  .toolItem .res{color:var(--ok);font-family:ui-monospace,Menlo,monospace;font-size:11px}
+
+  /* LangGraph workflow */
+  .graphSvg{width:100%;height:480px;background:radial-gradient(900px 500px at 50% 30%, #161a20 0%, #0b0d10 75%);border:1px solid var(--line);border-radius:10px}
+  .graphLegend{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;color:var(--muted);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+  .graphLegend .item{display:flex;align-items:center;gap:6px}
+  .graphLegend .dot{width:12px;height:12px;border-radius:3px}
+
+  /* Patterns grid */
+  .patternsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
+  .patternCard{padding:16px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;cursor:pointer;transition:all .3s ease}
+  .patternCard:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .patternCard .pn{font-size:13px;color:var(--accent);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+  .patternCard h5{margin:0 0 8px;font-size:14px;color:#fff}
+  .patternCard p{margin:0 0 8px;color:#cdd5de;font-size:13px}
+  .patternCard .mini{margin-top:10px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted)}
+
+  /* Metrics dashboard */
+  .metricsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px}
+  .metricCard{padding:14px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+  .metricCard .ml{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .metricCard .mv{font-size:24px;font-weight:700;margin-top:6px}
+  .metricCard .mh{font-size:11px;color:var(--muted);margin-top:4px}
+  .metricCard.good .mv{color:var(--ok)}
+  .metricCard.bad .mv{color:var(--warn)}
+  .metricCard.warn .mv{color:var(--accent2)}
+  .metricCard.info .mv{color:var(--accent)}
+
+  /* Pattern selector demo */
+  .patternSel{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .patternSel button{background:var(--panel);color:var(--muted);border:1px solid var(--line);padding:6px 14px;font:inherit;font-size:12px;border-radius:6px;cursor:pointer;transition:all .2s ease}
+  .patternSel button.on{background:var(--accent);color:#0b0d10;border-color:var(--accent)}
+  .patternSel button:hover{border-color:var(--accent)}
+  .patternView{padding:18px;background:#0a0c0f;border:1px solid var(--line);border-radius:10px;min-height:200px;font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+  .patternView h5{margin:0 0 10px;font-size:14px;color:var(--accent)}
+  .patternView .desc{color:#cdd5de;font-size:13px;line-height:1.6;margin-bottom:14px}
+  .patternView .flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .patternView .step{padding:8px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;font-size:12px;color:#fff;font-weight:600}
+  .patternView .step.active{border-color:var(--accent);background:rgba(124,209,255,0.1)}
+  .patternView .arrow{color:var(--muted);font-size:18px}
+  .patternView ul{margin:10px 0 0 0;padding-left:18px;color:#cdd5de;font-size:13px;line-height:1.6}
+
+  .footer{margin-top:30px;padding:18px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>AI Agents & Tool Orchestration
+  <small>Заняття 11 · як LLM перестає бути "відповідалкою" і стає актором, що думає, діє, спостерігає</small>
+</h1>
+<div class="sub">Інтерактивна лекція з ReAct-симуляцією, tool calling, агентними патернами і метриками. Натискай кнопки — все живе.</div>
+
+<nav class="toc">
+  <a href="#sec-what">Що таке агент</a>
+  <a href="#sec-architecture">Архітектура</a>
+  <a href="#sec-react">ReAct цикл</a>
+  <a href="#sec-tools">Tool calling</a>
+  <a href="#sec-patterns">Агентні патерни</a>
+  <a href="#sec-langgraph">LangGraph</a>
+  <a href="#sec-memory">Memory & State</a>
+  <a href="#sec-metrics">Метрики</a>
+  <a href="#sec-pitfalls">Pitfalls</a>
+</nav>
+
+<!-- ===================== SECTION 1: What is an agent ===================== -->
+<section id="sec-what">
+  <h2><span class="num">01.</span> Що таке AI агент</h2>
+  <p class="lead">LLM сам по собі — це чорна скринька, що генерує токени. Агент — це <b>система навколо LLM</b>, яка дає йому здатність <b>міркувати, обирати інструменти, виконувати дії, спостерігати результат і повторювати</b> цикл аж до досягнення мети.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>LLM (звичайний chat)</h4>
+      <p>Один запит → одна відповідь. Stateless. Не може діяти у зовнішньому світі. Знання обмежене training cutoff.</p>
+    </div>
+    <div class="card">
+      <h4>Agent (LLM + loop + tools)</h4>
+      <p>Багатокрокова взаємодія. Має <b>tools</b> (web search, code exec, DB queries). Сам вирішує коли і що викликати. Має пам'ять і стан.</p>
+    </div>
+  </div>
+
+  <h3>Anatomy агента</h3>
+  <div class="grid4">
+    <div class="card"><h4>🧠 Brain (LLM)</h4><p>Основна reasoning модель — Claude/GPT-4o. Вирішує що робити далі.</p></div>
+    <div class="card"><h4>🔧 Tools</h4><p>Функції, які агент може викликати: search, calculator, API, code run.</p></div>
+    <div class="card"><h4>💾 Memory</h4><p>Conversation history, scratchpad для думок, long-term knowledge.</p></div>
+    <div class="card"><h4>🎯 Goal</h4><p>System prompt + user task. Critically — критерій "готово".</p></div>
+  </div>
+
+  <h3>Коли потрібен агент, а коли — звичайний LLM</h3>
+  <table>
+    <thead><tr><th>Просто LLM</th><th>Потрібен агент</th></tr></thead>
+    <tbody>
+      <tr><td>Класифікація тексту</td><td>Customer support з доступом до DB</td></tr>
+      <tr><td>Summarization</td><td>Coding assistant (читає, пише, тестує файли)</td></tr>
+      <tr><td>Translation</td><td>Research assistant (web search + synthesis)</td></tr>
+      <tr><td>Single-shot Q&A</td><td>Multi-step booking (check → reserve → confirm → notify)</td></tr>
+      <tr><td>Structured extraction</td><td>SQL agent (генерує → виконує → виправляє)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===================== SECTION 2: Architecture ===================== -->
+<section id="sec-architecture">
+  <h2><span class="num">02.</span> Базова архітектура агента</h2>
+  <p class="lead">Усі сучасні агенти — від AutoGPT до Claude Code — побудовані на одній концепції: <b>цикл "думка → дія → спостереження"</b>, що крутиться поки модель не вирішить що мета досягнута.</p>
+
+  <div class="demo">
+    <div class="demoHead"><span class="tag">Live</span><h4>Висока архітектура агента</h4></div>
+<pre><span class="c"># Псевдокод того, що відбувається всередині будь-якого агента</span>
+<span class="k">def</span> <span class="f">agent_loop</span>(user_task: str, tools: list, max_iters: int = <span class="s">10</span>):
+    messages <span class="k">=</span> [
+        {<span class="s">"role"</span>: <span class="s">"system"</span>, <span class="s">"content"</span>: SYSTEM_PROMPT},
+        {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: user_task},
+    ]
+
+    <span class="k">for</span> step <span class="k">in</span> <span class="n">range</span>(max_iters):
+        response <span class="k">=</span> llm.chat(messages, tools<span class="k">=</span>tools)
+
+        <span class="k">if</span> response.tool_calls:
+            <span class="c"># Агент хоче викликати інструмент</span>
+            <span class="k">for</span> call <span class="k">in</span> response.tool_calls:
+                result <span class="k">=</span> execute_tool(call.name, call.arguments)
+                messages.append({<span class="s">"role"</span>: <span class="s">"tool"</span>, <span class="s">"content"</span>: result})
+        <span class="k">elif</span> response.content:
+            <span class="c"># Фінальна відповідь — агент вирішив що мета досягнута</span>
+            <span class="k">return</span> response.content
+
+    <span class="k">raise</span> MaxItersExceeded()</pre>
+  </div>
+
+  <h3>Що додається до базового циклу в продакшні</h3>
+  <div class="grid3">
+    <div class="card"><h4><span class="sev med">med</span>Step limit</h4><p>Максимум 10-30 ітерацій. Без цього агент може зациклитись і спалити $100 за хвилину.</p></div>
+    <div class="card"><h4><span class="sev med">med</span>Token budget</h4><p>Контекст росте з кожним кроком. Треба обрізати/стискати історію щоб не вилетіти за ліміт.</p></div>
+    <div class="card"><h4><span class="sev crit">crit</span>Tool authorization</h4><p>RBAC на кожен tool call. LLM не має повного доступу до production DB.</p></div>
+    <div class="card"><h4><span class="sev med">med</span>Tracing</h4><p>Кожна ітерація — окремий span. Без цього debugging агента — це пекло.</p></div>
+    <div class="card"><h4><span class="sev low">low</span>Streaming</h4><p>Користувач бачить "thinking..." → "calling tool X..." → "got result, analyzing..." в real-time.</p></div>
+    <div class="card"><h4><span class="sev crit">crit</span>Cost guardrails</h4><p>Per-task budget cap. Якщо досяг — або abort, або escalate до людини.</p></div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 3: ReAct cycle ===================== -->
+<section id="sec-react">
+  <h2><span class="num">03.</span> ReAct — Reasoning + Acting</h2>
+  <p class="lead">ReAct — найпопулярніший агентний паттерн (Yao et al, 2022). Замість того щоб LLM одразу видавав відповідь, він явно <b>думає вголос</b>, <b>обирає дію</b>, <b>спостерігає результат</b> і повторює. Дозволяє моделі виправляти помилки в процесі.</p>
+
+  <div class="demo">
+    <div class="demoHead"><span class="tag">Live Demo</span><h4>ReAct цикл — "Яка погода в Києві в цельсіях?"</h4></div>
+
+    <div class="reactCycle">
+      <div class="reactNode think" id="rnThink"><div class="icon">💭</div><div class="name">Thought</div><div class="label">reasoning</div></div>
+      <div class="reactArrow" id="ra1">→</div>
+      <div class="reactNode act" id="rnAct"><div class="icon">⚡</div><div class="name">Action</div><div class="label">tool call</div></div>
+      <div class="reactArrow" id="ra2">→</div>
+      <div class="reactNode observe" id="rnObserve"><div class="icon">👁</div><div class="name">Observation</div><div class="label">tool result</div></div>
+      <div class="reactArrow" id="ra3">↺</div>
+    </div>
+
+    <div class="reactLog" id="reactLog">
+      <div style="color:var(--muted);font-style:italic">▶ Натисни Run щоб запустити симуляцію ReAct циклу</div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="runReact()">▶ Run ReAct cycle</button>
+      <button class="btn" onclick="resetReact()">↺ Reset</button>
+    </div>
+  </div>
+
+  <h3>Чому ReAct працює краще ніж "пряма відповідь"</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Без ReAct (прямий запит)</h4>
+      <p>"Яка погода в Києві?" → модель галюцинує "23°C сонячно" з training data 2023 року. <b>Може бути неправильно</b>.</p>
+    </div>
+    <div class="card">
+      <h4>З ReAct</h4>
+      <p>Модель явно каже "мені треба викликати weather API" → викликає → отримує реальні дані → дає актуальну відповідь. <b>Grounded в фактах</b>.</p>
+    </div>
+  </div>
+
+  <h3>ReAct prompt structure</h3>
+<pre><span class="c"># Класичний ReAct prompt template</span>
+<span class="s">"""Answer the question by reasoning step by step.
+You have access to: {tools_description}
+
+Use this format:
+Thought: I need to think about what to do
+Action: tool_name
+Action Input: {"arg": "value"}
+Observation: <result from tool>
+... (this can repeat N times)
+Thought: I now know the final answer
+Final Answer: <your answer>
+
+Question: {user_question}
+"""</span></pre>
+</section>
+
+<!-- ===================== SECTION 4: Tool Calling ===================== -->
+<section id="sec-tools">
+  <h2><span class="num">04.</span> Tool Calling — як агент взаємодіє зі світом</h2>
+  <p class="lead">Tools — це Python функції з описом для LLM. Agent отримує список доступних tools, сам обирає коли і що викликати, з якими аргументами. Модерні моделі (Claude 4, GPT-4o) мають native tool use API.</p>
+
+  <div class="demo">
+    <div class="demoHead"><span class="tag">Animated</span><h4>Як агент викликає tools</h4></div>
+
+    <div class="toolDemo">
+      <div class="agentBox" id="agentBox">
+        <div class="ttl">🤖 Agent (Claude)</div>
+        <div class="desc">"Знайди погоду і конвертуй у F"</div>
+      </div>
+      <div class="arrowMid" id="arrow1">⟷</div>
+      <div class="toolBox" id="toolBox">
+        <div class="ttl">🔧 Tools</div>
+        <div class="desc">3 функції доступні</div>
+      </div>
+    </div>
+
+    <div class="toolList" id="toolList">
+      <div class="toolItem" data-tool="search">
+        <div>
+          <div class="nm">web_search</div>
+          <div class="args">query: "Kyiv weather today"</div>
+        </div>
+        <div class="res" id="res-search">—</div>
+      </div>
+      <div class="toolItem" data-tool="weather">
+        <div>
+          <div class="nm">get_weather</div>
+          <div class="args">city: "Kyiv"</div>
+        </div>
+        <div class="res" id="res-weather">—</div>
+      </div>
+      <div class="toolItem" data-tool="convert">
+        <div>
+          <div class="nm">celsius_to_fahrenheit</div>
+          <div class="args">celsius: 18</div>
+        </div>
+        <div class="res" id="res-convert">—</div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="runToolCalls()">▶ Simulate tool calls</button>
+      <button class="btn" onclick="resetTools()">↺ Reset</button>
+    </div>
+  </div>
+
+  <h3>Tool definition в Anthropic API</h3>
+<pre>tools <span class="k">=</span> [
+    {
+        <span class="s">"name"</span>: <span class="s">"get_weather"</span>,
+        <span class="s">"description"</span>: <span class="s">"Get current weather for a city. Returns temp in Celsius."</span>,
+        <span class="s">"input_schema"</span>: {
+            <span class="s">"type"</span>: <span class="s">"object"</span>,
+            <span class="s">"properties"</span>: {
+                <span class="s">"city"</span>: {<span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"description"</span>: <span class="s">"City name"</span>}
+            },
+            <span class="s">"required"</span>: [<span class="s">"city"</span>]
+        }
+    }
+]
+
+response <span class="k">=</span> client.messages.create(
+    model<span class="k">=</span><span class="s">"claude-opus-4-7"</span>,
+    tools<span class="k">=</span>tools,
+    messages<span class="k">=</span>[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"What's the weather in Kyiv?"</span>}]
+)
+
+<span class="c"># Модель повертає tool_use блоки з аргументами:</span>
+<span class="c"># response.content[0] = {type: "tool_use", name: "get_weather", input: {"city": "Kyiv"}}</span></pre>
+
+  <h3>Best practices для tool design</h3>
+  <div class="grid2">
+    <div class="card"><h4>✅ Описуй що робить, не як</h4><p>"Get current weather for a city" — не "Calls OpenWeatherMap API endpoint".</p></div>
+    <div class="card"><h4>✅ Вузькі, атомарні tools</h4><p><code>get_user(id)</code>, <code>update_email(id, email)</code> — а не один <code>do_user_stuff(action, ...)</code>.</p></div>
+    <div class="card"><h4>✅ Parameter validation</h4><p>JSON Schema з типами і `required`. LLM сам не валідує — твій код мусить.</p></div>
+    <div class="card"><h4>✅ Idempotency</h4><p>Якщо tool викликається двічі з тими ж аргументами — результат той самий. Без сюрпризів.</p></div>
+    <div class="card"><h4>❌ НЕ давай "god tools"</h4><p><code>execute_sql(query)</code> — катастрофа. Натомість <code>get_orders_by_user(id)</code>.</p></div>
+    <div class="card"><h4>❌ НЕ покладайся на самовалідацію</h4><p>LLM може передати <code>email="aaa"</code>. Перевіряй у коді tool, не в prompt.</p></div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 5: Agentic Patterns ===================== -->
+<section id="sec-patterns">
+  <h2><span class="num">05.</span> Агентні патерни (Anthropic's Building Effective Agents)</h2>
+  <p class="lead">Anthropic у грудні 2024 опублікувала канонічний guide "Building Effective Agents", де виділила 5 базових патернів. Більшість продакшн-систем — комбінація 2-3 з них. <b>Не все варто будувати як агент</b> — часто простий <i>workflow</i> працює краще.</p>
+
+  <div class="demo">
+    <div class="demoHead"><span class="tag">Interactive</span><h4>5 канонічних патернів — клікни щоб переглянути</h4></div>
+    <div class="patternSel" id="patternSel">
+      <button class="on" data-p="chain">1. Prompt Chaining</button>
+      <button data-p="route">2. Routing</button>
+      <button data-p="parallel">3. Parallelization</button>
+      <button data-p="orchestrator">4. Orchestrator-Workers</button>
+      <button data-p="evaluator">5. Evaluator-Optimizer</button>
+    </div>
+    <div class="patternView" id="patternView"></div>
+  </div>
+
+  <h3>Workflow vs Agent — критична відмінність</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Workflow (хардкоджений flow)</h4>
+      <p>Послідовність LLM викликів задана в коді розробником. <b>Передбачуваний</b>, дешевий, легше дебажити. Patterns 1-3 — це workflows.</p>
+    </div>
+    <div class="card">
+      <h4>Agent (LLM сам обирає кроки)</h4>
+      <p>LLM динамічно вирішує що робити далі. <b>Гнучкий</b>, але дорогий і непередбачуваний. Patterns 4-5 — це справжні agents.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 6: LangGraph ===================== -->
+<section id="sec-langgraph">
+  <h2><span class="num">06.</span> LangGraph — побудова агентних workflows як графів</h2>
+  <p class="lead">LangGraph (від LangChain команди) — це фреймворк, який дозволяє описати агента як <b>state machine</b>: вузли = функції/LLM calls, ребра = переходи між станами. Працює добре з ReAct, routing, multi-agent системами.</p>
+
+  <div class="demo">
+    <div class="demoHead"><span class="tag">Animated</span><h4>Customer Support Agent — LangGraph workflow</h4></div>
+    <svg class="graphSvg" id="graphSvg" viewBox="0 0 900 480" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="graphLegend">
+      <div class="item"><span class="dot" style="background:var(--accent)"></span> LLM node</div>
+      <div class="item"><span class="dot" style="background:var(--tool)"></span> Tool/Action node</div>
+      <div class="item"><span class="dot" style="background:var(--accent3)"></span> Decision/Router</div>
+      <div class="item"><span class="dot" style="background:var(--accent5)"></span> Final state</div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="runGraph('refund')">▶ Запит на refund</button>
+      <button class="btn primary" onclick="runGraph('technical')">▶ Технічна проблема</button>
+      <button class="btn primary" onclick="runGraph('escalate')">▶ Складний кейс → ескалація</button>
+      <button class="btn" onclick="resetGraph()">↺ Reset</button>
+    </div>
+  </div>
+
+  <h3>Чому LangGraph, а не просто Python код</h3>
+  <div class="grid3">
+    <div class="card"><h4>State management</h4><p>Один shared state об'єкт ходить між нодами. Не треба пробрасувати dict через 10 функцій.</p></div>
+    <div class="card"><h4>Conditional routing</h4><p>"Якщо score &lt; 0.7 → escalate" — декларативно, не if/else в коді.</p></div>
+    <div class="card"><h4>Streaming + checkpointing</h4><p>Кожен node може стрімити progress. State зберігається — можна resume з midpoint.</p></div>
+    <div class="card"><h4>Human-in-the-loop</h4><p>Pause перед критичним кроком, чекати на людську approval, продовжити.</p></div>
+    <div class="card"><h4>Visualization</h4><p>Graph рендериться як діаграма — видно архітектуру, не треба читати код.</p></div>
+    <div class="card"><h4>Native LangSmith trace</h4><p>Кожен node автоматично логується — debugging стає реальним.</p></div>
+  </div>
+
+  <h3>Простий LangGraph приклад</h3>
+<pre><span class="k">from</span> langgraph.graph <span class="k">import</span> StateGraph, END
+<span class="k">from</span> typing <span class="k">import</span> TypedDict
+
+<span class="k">class</span> <span class="n">AgentState</span>(TypedDict):
+    query: <span class="n">str</span>
+    classification: <span class="n">str</span>
+    answer: <span class="n">str</span>
+
+<span class="k">def</span> <span class="f">classify</span>(state):
+    <span class="k">return</span> {<span class="s">"classification"</span>: llm.classify(state[<span class="s">"query"</span>])}
+
+<span class="k">def</span> <span class="f">handle_billing</span>(state):
+    <span class="k">return</span> {<span class="s">"answer"</span>: billing_agent(state[<span class="s">"query"</span>])}
+
+<span class="k">def</span> <span class="f">handle_technical</span>(state):
+    <span class="k">return</span> {<span class="s">"answer"</span>: tech_agent(state[<span class="s">"query"</span>])}
+
+<span class="k">def</span> <span class="f">router</span>(state):
+    <span class="k">return</span> state[<span class="s">"classification"</span>]  <span class="c"># "billing" or "technical"</span>
+
+graph <span class="k">=</span> StateGraph(AgentState)
+graph.add_node(<span class="s">"classify"</span>, classify)
+graph.add_node(<span class="s">"billing"</span>, handle_billing)
+graph.add_node(<span class="s">"technical"</span>, handle_technical)
+graph.set_entry_point(<span class="s">"classify"</span>)
+graph.add_conditional_edges(<span class="s">"classify"</span>, router, {
+    <span class="s">"billing"</span>: <span class="s">"billing"</span>,
+    <span class="s">"technical"</span>: <span class="s">"technical"</span>,
+})
+graph.add_edge(<span class="s">"billing"</span>, END)
+graph.add_edge(<span class="s">"technical"</span>, END)
+
+app <span class="k">=</span> graph.compile()
+result <span class="k">=</span> app.invoke({<span class="s">"query"</span>: <span class="s">"My card was charged twice"</span>})</pre>
+</section>
+
+<!-- ===================== SECTION 7: Memory ===================== -->
+<section id="sec-memory">
+  <h2><span class="num">07.</span> Memory & State Management</h2>
+  <p class="lead">Агент без пам'яті — це Memento. Йому треба зберігати: <b>conversation history</b>, <b>scratchpad</b> (intermediate thoughts), <b>tool results</b>, і часто <b>long-term knowledge</b> (попередні розмови з цим юзером).</p>
+
+  <h3>Типи пам'яті в агентах</h3>
+  <table>
+    <thead><tr><th>Тип</th><th>Що зберігає</th><th>Де</th><th>TTL</th></tr></thead>
+    <tbody>
+      <tr><td><b>Working memory</b></td><td>Current step thoughts, intermediate results</td><td>messages array</td><td>1 task</td></tr>
+      <tr><td><b>Conversation memory</b></td><td>Усі повідомлення в чаті</td><td>Redis / DB per session</td><td>1 session</td></tr>
+      <tr><td><b>Episodic memory</b></td><td>Попередні розмови, tool calls history</td><td>Vector DB</td><td>weeks-months</td></tr>
+      <tr><td><b>Semantic memory</b></td><td>Факти про користувача, preferences</td><td>Structured DB</td><td>persistent</td></tr>
+      <tr><td><b>Procedural memory</b></td><td>Як вирішувати задачі (cached patterns)</td><td>Prompt cache / DB</td><td>persistent</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Стратегії стиснення історії</h3>
+  <div class="grid3">
+    <div class="card"><h4>Sliding window</h4><p>Тримаємо останні N повідомлень. Старі скидаємо. <b>Простий, але втрачає контекст</b>.</p></div>
+    <div class="card"><h4>Summarization</h4><p>Стара історія → 1-параграф summary. Зберігає зміст, втрачає деталі.</p></div>
+    <div class="card"><h4>Hierarchical</h4><p>Recent — full. Mid-age — summarized. Old — vector retrieval за релевантністю.</p></div>
+    <div class="card"><h4>Selective compression</h4><p>Tool calls/results → стискаємо. User messages — залишаємо. Прагматичний підхід.</p></div>
+    <div class="card"><h4>External scratchpad</h4><p>Думки агента пишуться в окремий файл/DB, не в messages. Контекст не росте.</p></div>
+    <div class="card"><h4>Anthropic prompt cache</h4><p>System + tool definitions кешуються на стороні провайдера → 90% economy на повторах.</p></div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 8: Metrics ===================== -->
+<section id="sec-metrics">
+  <h2><span class="num">08.</span> Метрики агентів — як виміряти що працює</h2>
+  <p class="lead">Звичайний LLM міряєш latency і accuracy. Агент — складніше. Багато викликів LLM, багато tool calls, multi-step trajectories. Метрики мають охоплювати <b>якість</b>, <b>ефективність</b> і <b>надійність</b>.</p>
+
+  <h3>Live dashboard — типові метрики продакшн-агента</h3>
+  <div class="metricsGrid">
+    <div class="metricCard good">
+      <div class="ml">Task Success Rate</div>
+      <div class="mv" id="m1">87%</div>
+      <div class="mh">↑ +3% vs last week</div>
+    </div>
+    <div class="metricCard info">
+      <div class="ml">Avg Steps per Task</div>
+      <div class="mv" id="m2">4.2</div>
+      <div class="mh">target: &lt; 8</div>
+    </div>
+    <div class="metricCard warn">
+      <div class="ml">Tool Call Errors</div>
+      <div class="mv" id="m3">6.4%</div>
+      <div class="mh">↑ +1.2% — investigate</div>
+    </div>
+    <div class="metricCard info">
+      <div class="ml">Cost per Task</div>
+      <div class="mv" id="m4">$0.18</div>
+      <div class="mh">avg 12K tokens</div>
+    </div>
+    <div class="metricCard good">
+      <div class="ml">P95 Latency</div>
+      <div class="mv" id="m5">8.4s</div>
+      <div class="mh">below 12s SLO</div>
+    </div>
+    <div class="metricCard bad">
+      <div class="ml">Loop Detection</div>
+      <div class="mv" id="m6">2.1%</div>
+      <div class="mh">tasks hit max_iters</div>
+    </div>
+    <div class="metricCard warn">
+      <div class="ml">Hallucination Rate</div>
+      <div class="mv" id="m7">3.8%</div>
+      <div class="mh">via LLM-judge eval</div>
+    </div>
+    <div class="metricCard info">
+      <div class="ml">Human Escalations</div>
+      <div class="mv" id="m8">11%</div>
+      <div class="mh">target: &lt; 15%</div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px"><button class="btn primary" onclick="randomizeMetrics()">↻ Refresh metrics</button></div>
+
+  <h3>Категорії метрик</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>🎯 Якість (Quality)</h4>
+      <p><b>Task success rate</b> — чи виконано мету (LLM-judge або human eval). <b>Hallucination rate</b> — частка відповідей з невірними фактами. <b>Faithfulness</b> — наскільки відповідь grounded у retrieved tools/docs.</p>
+    </div>
+    <div class="card">
+      <h4>⚡ Ефективність (Efficiency)</h4>
+      <p><b>Steps per task</b> — скільки ітерацій ReAct loop. <b>Tokens per task</b> — сумарні витрати. <b>Cost per task</b> — $ per resolution. <b>Tool call efficiency</b> — корисні / усі виклики.</p>
+    </div>
+    <div class="card">
+      <h4>🛡 Надійність (Reliability)</h4>
+      <p><b>Tool call error rate</b> — % фейлів API/DB. <b>Loop detection</b> — задачі що уперлись у max_iters. <b>Timeout rate</b>. <b>Recovery rate</b> — чи зміг агент після помилки.</p>
+    </div>
+    <div class="card">
+      <h4>👥 UX</h4>
+      <p><b>Time to first token</b>. <b>Time to resolution</b>. <b>Human escalation rate</b>. <b>User satisfaction (CSAT)</b> — реальні фідбеки. <b>Drop-off rate</b> — на якому кроці юзер закриває.</p>
+    </div>
+  </div>
+
+  <h3>Eval методи для агентів</h3>
+  <div class="grid3">
+    <div class="card"><h4>End-to-end eval</h4><p>Golden dataset з 50-200 задач + expected outcomes. Раз на тиждень ганяємо весь набір і дивимось success rate.</p></div>
+    <div class="card"><h4>LLM-as-judge</h4><p>Інша LLM (Opus/GPT-4o) оцінює binary pass/fail чи трасу агента. Дешевше за людину, корелює з людським рейтингом.</p></div>
+    <div class="card"><h4>Trajectory eval</h4><p>Не тільки фінальна відповідь — а й чи правильні tools викликалися, в правильному порядку.</p></div>
+    <div class="card"><h4>A/B testing</h4><p>Дві версії агента (різні prompt, моделі) на 50/50 traffic → порівнюємо метрики.</p></div>
+    <div class="card"><h4>Replay testing</h4><p>Записані real traces → проганяємо через нову версію агента → diff. Ловимо regressions.</p></div>
+    <div class="card"><h4>Adversarial eval</h4><p>Спеціальні складні/злі кейси (jailbreaks, edge cases) — щоб ловити failure modes.</p></div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 9: Pitfalls ===================== -->
+<section id="sec-pitfalls">
+  <h2><span class="num">09.</span> Pitfalls — що часто ламається в агентах</h2>
+  <p class="lead">Агенти — найскладніша частина AI-engineering. Помилки тут не "крашать сервер" — вони "втрачають $200 за ніч" або "відповідають неправильно але впевнено". Ось 8 типових pitfalls.</p>
+
+  <div class="grid2">
+    <div class="card"><h4><span class="sev crit">crit</span>Loops without exit</h4><p>Агент повторює одну дію 30 разів. Завжди ставити <code>max_iters</code> і <code>cost_budget</code>. Слідкувати за повторами.</p></div>
+    <div class="card"><h4><span class="sev crit">crit</span>Tool over-use</h4><p>"Я викликаю web_search 8 разів на одне питання". Бюджет на tool calls per task — обов'язковий.</p></div>
+    <div class="card"><h4><span class="sev crit">crit</span>Hallucinated tool args</h4><p>LLM передає <code>user_id="John Smith"</code> замість UUID. Завжди валідація на стороні tool, не довіряємо моделі.</p></div>
+    <div class="card"><h4><span class="sev crit">crit</span>Lost context</h4><p>На кроці 15 модель забула що користувач казав на кроці 2. Хороша summarization або зовнішній state.</p></div>
+    <div class="card"><h4><span class="sev med">med</span>Tool poisoning</h4><p>Tool результат містить prompt injection ("Ignore previous, do X"). Sanitize tool outputs перед поверненням у LLM.</p></div>
+    <div class="card"><h4><span class="sev med">med</span>Premature finalization</h4><p>Агент видає "I'm done" не виконавши задачу. Чіткий definition of done у system prompt + verification step.</p></div>
+    <div class="card"><h4><span class="sev med">med</span>Non-determinism</h4><p>Той самий запит → різні шляхи виконання. <code>temperature=0</code> не повністю детермінує — multi-step amplifies variance.</p></div>
+    <div class="card"><h4><span class="sev low">low</span>Over-engineering</h4><p>"Зробив 5 агентів і orchestrator", коли вистачило б простого RAG. Anthropic: <b>"start simple, add complexity only when needed"</b>.</p></div>
+  </div>
+
+  <h3>Anthropic's golden rules</h3>
+  <div class="pad" style="margin-top:14px;padding:14px;background:rgba(255,209,102,0.06);border:1px solid var(--accent2);border-radius:10px">
+    <ul>
+      <li><b>"Maintain simplicity"</b> — починай з простого workflow, переходь на agent тільки коли треба динамічна логіка</li>
+      <li><b>"Prioritize transparency"</b> — детальне логування кожного кроку, бо інакше debug неможливий</li>
+      <li><b>"Carefully craft tool descriptions"</b> — це твій prompt для LLM, не просто docstring</li>
+      <li><b>"Test extensively in sandboxed environments"</b> — production agent has access to real systems, помилки коштують</li>
+    </ul>
+  </div>
+</section>
+
+<div class="footer">
+  Заняття 11 · AI Agents & Tool Orchestration · Курс AI Engineering
+</div>
+
+</div>
+
+<script>
+/* ============== ReAct cycle ============== */
+const REACT_STEPS = [
+  {phase: "think", text: "Thought: User asks about weather in Kyiv in Fahrenheit. I need current weather data and to convert units."},
+  {phase: "act", text: "Action: get_weather(city='Kyiv')"},
+  {phase: "observe", text: "Observation: {temperature: 18, unit: 'celsius', condition: 'partly cloudy'}"},
+  {phase: "think", text: "Thought: Got 18°C. Now I need to convert to Fahrenheit. Formula: F = C × 9/5 + 32."},
+  {phase: "act", text: "Action: celsius_to_fahrenheit(celsius=18)"},
+  {phase: "observe", text: "Observation: 64.4"},
+  {phase: "think", text: "Thought: I have everything needed for final answer."},
+  {phase: "final", text: "Final Answer: Weather in Kyiv is 18°C (64.4°F), partly cloudy."},
+];
+let reactTimer = null;
+function resetReact(){
+  if(reactTimer){clearTimeout(reactTimer);reactTimer=null}
+  document.getElementById('reactLog').innerHTML = '<div style="color:var(--muted);font-style:italic">▶ Натисни Run щоб запустити симуляцію ReAct циклу</div>';
+  ['rnThink','rnAct','rnObserve'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['ra1','ra2','ra3'].forEach(id=>document.getElementById(id).classList.remove('active'));
+}
+function runReact(){
+  resetReact();
+  const log = document.getElementById('reactLog');
+  log.innerHTML = '';
+  let i = 0;
+  function nextStep(){
+    if(i >= REACT_STEPS.length){
+      ['rnThink','rnAct','rnObserve'].forEach(id=>document.getElementById(id).classList.remove('active'));
+      return;
+    }
+    const step = REACT_STEPS[i];
+    ['rnThink','rnAct','rnObserve'].forEach(id=>document.getElementById(id).classList.remove('active'));
+    ['ra1','ra2','ra3'].forEach(id=>document.getElementById(id).classList.remove('active'));
+    if(step.phase === "think"){
+      document.getElementById('rnThink').classList.add('active');
+      document.getElementById('ra1').classList.add('active');
+    } else if(step.phase === "act"){
+      document.getElementById('rnAct').classList.add('active');
+      document.getElementById('ra2').classList.add('active');
+    } else if(step.phase === "observe"){
+      document.getElementById('rnObserve').classList.add('active');
+      document.getElementById('ra3').classList.add('active');
+    }
+    const div = document.createElement('div');
+    div.className = 'entry ' + step.phase;
+    div.textContent = step.text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    i++;
+    reactTimer = setTimeout(nextStep, 1100);
+  }
+  nextStep();
+}
+
+/* ============== Tool Calling animation ============== */
+function resetTools(){
+  document.querySelectorAll('.toolItem').forEach(item=>{
+    item.classList.remove('calling','done');
+  });
+  ['res-search','res-weather','res-convert'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('arrow1').classList.remove('flowing');
+}
+function runToolCalls(){
+  resetTools();
+  const arrow = document.getElementById('arrow1');
+  arrow.classList.add('flowing');
+  const calls = [
+    {tool:'search', delay:200, result:'5 results found'},
+    {tool:'weather', delay:1100, result:'18°C, partly cloudy'},
+    {tool:'convert', delay:2200, result:'64.4°F'},
+  ];
+  calls.forEach(({tool, delay, result})=>{
+    setTimeout(()=>{
+      const item = document.querySelector(`.toolItem[data-tool="${tool}"]`);
+      item.classList.add('calling');
+      document.getElementById('res-'+tool).textContent = '⟳ calling...';
+    }, delay);
+    setTimeout(()=>{
+      const item = document.querySelector(`.toolItem[data-tool="${tool}"]`);
+      item.classList.remove('calling');
+      item.classList.add('done');
+      document.getElementById('res-'+tool).textContent = '✓ ' + result;
+    }, delay + 800);
+  });
+  setTimeout(()=>arrow.classList.remove('flowing'), 3500);
+}
+
+/* ============== Patterns ============== */
+const PATTERNS = {
+  chain: {
+    name: "Prompt Chaining",
+    desc: "Розбити складну задачу на послідовність LLM-викликів. Output одного → Input наступного. Найпростіший пайплайн.",
+    flow: ["Generate outline", "Write draft", "Polish & format"],
+    use: ["Document generation (outline → draft → edit)", "Content moderation pipeline", "Translate → Review → Publish"],
+    note: "Workflow, не agent. Немає динамічного вибору — порядок задано."
+  },
+  route: {
+    name: "Routing",
+    desc: "LLM-класифікатор вирішує куди направити запит. Кожен handler оптимізований під свій тип.",
+    flow: ["Classify intent", "Route to specialized handler", "Return answer"],
+    use: ["Customer support (billing/tech/general)", "Multi-language input → language-specific agent", "Easy queries → fast model, hard → strong model"],
+    note: "Дешевше і точніше за один универсальний агент."
+  },
+  parallel: {
+    name: "Parallelization",
+    desc: "Запит розбивається на independent subtasks → виконуються паралельно → results об'єднуються.",
+    flow: ["Split task", "Run N LLMs concurrently", "Aggregate results"],
+    use: ["Sectioning (різні моделі на різні аспекти)", "Voting (3 LLMs голосують для accuracy)", "Multi-aspect review (security, perf, style)"],
+    note: "Швидко (parallel) і robust (можна voting). Дорожче за один виклик."
+  },
+  orchestrator: {
+    name: "Orchestrator-Workers",
+    desc: "Центральний LLM (orchestrator) динамічно вирішує які subtasks делегувати worker-агентам. Найбільш agentic pattern.",
+    flow: ["Orchestrator analyzes task", "Spawns workers as needed", "Synthesizes worker outputs"],
+    use: ["Coding agents (Claude Code: planner + executor)", "Research agents (search + read + synthesize)", "Complex multi-tool workflows"],
+    note: "Гнучкий але непередбачуваний. Високий cost. Складно дебажити."
+  },
+  evaluator: {
+    name: "Evaluator-Optimizer",
+    desc: "Один LLM генерує відповідь, інший — оцінює і дає feedback. Цикл повторюється поки якість не достатня.",
+    flow: ["Generator produces draft", "Evaluator scores + feedback", "Generator refines (loop)"],
+    use: ["Code generation з self-correction", "Creative writing (ітеративне покращення)", "Translation з якісним gate"],
+    note: "Якість ↑, але latency × N і cost × N. Потрібен чіткий критерій 'good enough'."
+  },
+};
+function showPattern(key){
+  const p = PATTERNS[key];
+  const view = document.getElementById('patternView');
+  const flow = p.flow.map((s,i)=>`<div class="step">${s}</div>${i<p.flow.length-1?'<div class="arrow">→</div>':''}`).join('');
+  view.innerHTML = `
+    <h5>${p.name}</h5>
+    <div class="desc">${p.desc}</div>
+    <div class="flow">${flow}</div>
+    <div style="margin-top:14px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px">Use cases:</div>
+    <ul>${p.use.map(u=>`<li>${u}</li>`).join('')}</ul>
+    <div style="margin-top:12px;padding:10px;background:var(--panel);border-left:3px solid var(--accent2);border-radius:4px;font-size:12px;color:var(--accent2)">⚠ ${p.note}</div>
+  `;
+}
+document.querySelectorAll('.patternSel button').forEach(btn=>{
+  btn.addEventListener('click', e=>{
+    document.querySelectorAll('.patternSel button').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    showPattern(btn.dataset.p);
+  });
+});
+showPattern('chain');
+
+/* ============== LangGraph SVG ============== */
+const NODES = [
+  {id:'start', x:80, y:240, label:'User Query', type:'final', kind:'start'},
+  {id:'classify', x:240, y:240, label:'Classify Intent', type:'llm'},
+  {id:'router', x:400, y:240, label:'Router', type:'decision'},
+  {id:'billing', x:560, y:120, label:'Billing Agent', type:'llm'},
+  {id:'tech', x:560, y:240, label:'Tech Agent', type:'llm'},
+  {id:'escalate', x:560, y:360, label:'Human Escalation', type:'tool'},
+  {id:'tool_db', x:730, y:120, label:'Query DB', type:'tool'},
+  {id:'tool_kb', x:730, y:240, label:'Search KB', type:'tool'},
+  {id:'response', x:850, y:240, label:'Send Response', type:'final'},
+];
+const EDGES = [
+  {from:'start', to:'classify'},
+  {from:'classify', to:'router'},
+  {from:'router', to:'billing', label:'billing'},
+  {from:'router', to:'tech', label:'technical'},
+  {from:'router', to:'escalate', label:'complex'},
+  {from:'billing', to:'tool_db'},
+  {from:'tech', to:'tool_kb'},
+  {from:'tool_db', to:'response'},
+  {from:'tool_kb', to:'response'},
+  {from:'escalate', to:'response'},
+];
+function colorByType(t){
+  return {llm:'var(--accent)',tool:'var(--tool)',decision:'var(--accent3)',final:'var(--accent5)'}[t] || '#888';
+}
+function renderGraph(){
+  const svg = document.getElementById('graphSvg');
+  let html = '';
+  // arrows defs
+  html += `<defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3a4654"/>
+    </marker>
+    <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7cd1ff"/>
+    </marker>
+  </defs>`;
+  // edges
+  for(const e of EDGES){
+    const a = NODES.find(n=>n.id===e.from);
+    const b = NODES.find(n=>n.id===e.to);
+    const eid = `edge-${e.from}-${e.to}`;
+    html += `<line id="${eid}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#3a4654" stroke-width="2" marker-end="url(#arrowhead)"/>`;
+    if(e.label){
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2 - 6;
+      html += `<text x="${mx}" y="${my}" fill="#9aa3ad" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">${e.label}</text>`;
+    }
+  }
+  // nodes
+  for(const n of NODES){
+    const w = Math.max(80, n.label.length * 6.5);
+    const color = colorByType(n.type);
+    html += `<g id="node-${n.id}">
+      <rect x="${n.x - w/2}" y="${n.y - 22}" width="${w}" height="44" rx="8" fill="#1d2127" stroke="${color}" stroke-width="2"/>
+      <text x="${n.x}" y="${n.y + 4}" fill="#fff" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif" font-weight="600" text-anchor="middle">${n.label}</text>
+    </g>`;
+  }
+  svg.innerHTML = html;
+}
+renderGraph();
+
+function activateNode(id){
+  const node = document.querySelector(`#node-${id} rect`);
+  if(node){
+    node.setAttribute('stroke-width', '4');
+    node.setAttribute('filter', 'drop-shadow(0 0 8px rgba(124,209,255,0.7))');
+  }
+}
+function activateEdge(from, to){
+  const edge = document.getElementById(`edge-${from}-${to}`);
+  if(edge){
+    edge.setAttribute('stroke', '#7cd1ff');
+    edge.setAttribute('stroke-width', '3');
+    edge.setAttribute('marker-end', 'url(#arrowhead-active)');
+  }
+}
+function resetGraph(){
+  renderGraph();
+}
+const PATHS = {
+  refund:    ['start','classify','router','billing','tool_db','response'],
+  technical: ['start','classify','router','tech','tool_kb','response'],
+  escalate:  ['start','classify','router','escalate','response'],
+};
+function runGraph(scenario){
+  resetGraph();
+  const path = PATHS[scenario];
+  let i = 0;
+  function step(){
+    if(i >= path.length) return;
+    activateNode(path[i]);
+    if(i > 0) activateEdge(path[i-1], path[i]);
+    i++;
+    setTimeout(step, 600);
+  }
+  step();
+}
+
+/* ============== Metrics ============== */
+function randomizeMetrics(){
+  const r = (min, max, fixed=0) => (Math.random()*(max-min)+min).toFixed(fixed);
+  document.getElementById('m1').textContent = r(82,93,0)+'%';
+  document.getElementById('m2').textContent = r(3.2,5.8,1);
+  document.getElementById('m3').textContent = r(3,9,1)+'%';
+  document.getElementById('m4').textContent = '$'+r(0.10,0.32,2);
+  document.getElementById('m5').textContent = r(6.0,11.0,1)+'s';
+  document.getElementById('m6').textContent = r(0.5,3.5,1)+'%';
+  document.getElementById('m7').textContent = r(2,6,1)+'%';
+  document.getElementById('m8').textContent = r(7,16,0)+'%';
+}
+</script>
+
+</body>
+</html>
