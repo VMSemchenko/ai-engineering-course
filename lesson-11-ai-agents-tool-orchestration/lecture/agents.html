@@ -180,6 +180,7 @@
   <a href="#sec-patterns">Агентні патерни</a>
   <a href="#sec-langgraph">LangGraph</a>
   <a href="#sec-frameworks">Інші фреймворки</a>
+  <a href="#sec-deepagents">Deep Agents</a>
   <a href="#sec-memory">Memory & State</a>
   <a href="#sec-metrics">Метрики</a>
   <a href="#sec-pitfalls">Pitfalls</a>
@@ -188,7 +189,7 @@
 <!-- ===================== SECTION 1: What is an agent ===================== -->
 <section id="sec-what">
   <h2><span class="num">01.</span> Що таке AI агент</h2>
-  <p class="lead">LLM сам по собі — це чорна скринька, що генерує токени. Агент — це <b>система навколо LLM</b>, яка дає йому здатність <b>міркувати, обирати інструменти, виконувати дії, спостерігати результат і повторювати</b> цикл аж до досягнення мети.</p>
+  <p class="lead">LLM сам по собі — це чорна скринька, що генерує токени. Агент — це <b>система навколо LLM</b>: <b>думає, викликає інструменти, дивиться результат, повторює</b> — поки не закінчить задачу.</p>
 
   <div class="grid2">
     <div class="card">
@@ -225,10 +226,10 @@
 <!-- ===================== SECTION 2: Architecture ===================== -->
 <section id="sec-architecture">
   <h2><span class="num">02.</span> Базова архітектура агента</h2>
-  <p class="lead">Усі сучасні агенти — від AutoGPT до Claude Code — побудовані на одній концепції: <b>цикл "думка → дія → спостереження"</b>, що крутиться поки модель не вирішить що мета досягнута.</p>
+  <p class="lead">Від AutoGPT до Claude Code — усі агенти крутять той самий <b>цикл "думка → дія → спостереження"</b>, поки модель не вирішить що задача закрита.</p>
 
   <div class="demo">
-    <div class="demoHead"><span class="tag">Live</span><h4>Висока архітектура агента</h4></div>
+    <div class="demoHead"><span class="tag">Live</span><h4>Базова архітектура агента</h4></div>
 <pre><span class="c"># Псевдокод того, що відбувається всередині будь-якого агента</span>
 <span class="k">def</span> <span class="f">agent_loop</span>(user_task: str, tools: list, max_iters: int = <span class="s">10</span>):
     messages <span class="k">=</span> [
@@ -301,22 +302,91 @@
     </div>
   </div>
 
-  <h3>ReAct prompt structure</h3>
-<pre><span class="c"># Класичний ReAct prompt template</span>
-<span class="s">"""Answer the question by reasoning step by step.
-You have access to: {tools_description}
+  <h3>ReAct повний цикл — мінімальна реалізація з нуля</h3>
+  <p class="lead">Без LangChain і фреймворків — ~60 рядків Python. Показує що "агент" це не магія, а <b>prompt + parser + loop</b>. Один файл, можна запустити локально.</p>
+<pre><span class="c"># pip install openai</span>
+<span class="k">import</span> json, re
+<span class="k">from</span> openai <span class="k">import</span> OpenAI
 
-Use this format:
-Thought: I need to think about what to do
-Action: tool_name
-Action Input: {"arg": "value"}
-Observation: <result from tool>
-... (this can repeat N times)
+client <span class="k">=</span> OpenAI()  <span class="c"># OPENAI_API_KEY у env</span>
+
+<span class="c"># 1. Tools — звичайні Python функції</span>
+<span class="k">def</span> <span class="f">get_weather</span>(city: <span class="n">str</span>) <span class="k">-&gt;</span> <span class="n">str</span>:
+    <span class="c"># у проді — реальний API виклик</span>
+    <span class="k">return</span> json.dumps({<span class="s">"city"</span>: city, <span class="s">"temp_c"</span>: <span class="s">18</span>, <span class="s">"sky"</span>: <span class="s">"partly cloudy"</span>})
+
+<span class="k">def</span> <span class="f">celsius_to_fahrenheit</span>(c: <span class="n">float</span>) <span class="k">-&gt;</span> <span class="n">str</span>:
+    <span class="k">return</span> <span class="n">str</span>(<span class="n">round</span>(c <span class="k">*</span> <span class="s">9</span><span class="k">/</span><span class="s">5</span> <span class="k">+</span> <span class="s">32</span>, <span class="s">1</span>))
+
+TOOLS <span class="k">=</span> {<span class="s">"get_weather"</span>: get_weather, <span class="s">"celsius_to_fahrenheit"</span>: celsius_to_fahrenheit}
+
+TOOLS_DESCRIPTION <span class="k">=</span> <span class="s">"""
+- get_weather(city: str) -> JSON {temp_c, sky}
+- celsius_to_fahrenheit(c: float) -> str
+"""</span>
+
+<span class="c"># 2. ReAct prompt template</span>
+SYSTEM <span class="k">=</span> <span class="s">f"""Answer the question by reasoning step by step.
+You have access to:
+{TOOLS_DESCRIPTION}
+
+Use EXACTLY this format on each step:
+Thought: &lt;your reasoning&gt;
+Action: &lt;tool_name&gt;
+Action Input: &lt;JSON args&gt;
+
+After you see Observation, continue with another Thought/Action,
+or finish with:
 Thought: I now know the final answer
-Final Answer: <your answer>
+Final Answer: &lt;your answer&gt;
+"""</span>
 
-Question: {user_question}
-"""</span></pre>
+<span class="c"># 3. Parser для відповіді LLM</span>
+ACTION_RE <span class="k">=</span> re.compile(<span class="s">r"Action:\s*(\w+)\s*Action Input:\s*(\{.*?\})"</span>, re.DOTALL)
+FINAL_RE  <span class="k">=</span> re.compile(<span class="s">r"Final Answer:\s*(.+)"</span>, re.DOTALL)
+
+<span class="k">def</span> <span class="f">parse</span>(text: <span class="n">str</span>):
+    <span class="k">if</span> m <span class="k">:=</span> FINAL_RE.search(text):
+        <span class="k">return</span> (<span class="s">"final"</span>, m.group(<span class="s">1</span>).strip())
+    <span class="k">if</span> m <span class="k">:=</span> ACTION_RE.search(text):
+        <span class="k">return</span> (<span class="s">"action"</span>, m.group(<span class="s">1</span>), json.loads(m.group(<span class="s">2</span>)))
+    <span class="k">raise</span> ValueError(<span class="s">f"Cannot parse: {text}"</span>)
+
+<span class="c"># 4. ReAct loop</span>
+<span class="k">def</span> <span class="f">run_agent</span>(question: <span class="n">str</span>, max_steps: <span class="n">int</span> <span class="k">=</span> <span class="s">6</span>) <span class="k">-&gt;</span> <span class="n">str</span>:
+    history <span class="k">=</span> <span class="s">f"Question: {question}\n"</span>
+    <span class="k">for</span> step <span class="k">in</span> <span class="n">range</span>(max_steps):
+        resp <span class="k">=</span> client.chat.completions.create(
+            model=<span class="s">"gpt-4o-mini"</span>,
+            messages=[
+                {<span class="s">"role"</span>: <span class="s">"system"</span>, <span class="s">"content"</span>: SYSTEM},
+                {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: history},
+            ],
+            stop=[<span class="s">"Observation:"</span>],   <span class="c"># важливо — модель не вигадує спостереження</span>
+            temperature=<span class="s">0</span>,
+        )
+        text <span class="k">=</span> resp.choices[<span class="s">0</span>].message.content
+        <span class="k">print</span>(<span class="s">f"\n— step {step} —\n{text}"</span>)
+        history <span class="k">+=</span> text <span class="k">+</span> <span class="s">"\n"</span>
+
+        kind, <span class="k">*</span>rest <span class="k">=</span> parse(text)
+        <span class="k">if</span> kind <span class="k">==</span> <span class="s">"final"</span>:
+            <span class="k">return</span> rest[<span class="s">0</span>]
+
+        tool_name, args <span class="k">=</span> rest
+        observation <span class="k">=</span> TOOLS[tool_name](<span class="k">**</span>args)
+        <span class="k">print</span>(<span class="s">f"Observation: {observation}"</span>)
+        history <span class="k">+=</span> <span class="s">f"Observation: {observation}\n"</span>
+
+    <span class="k">raise</span> RuntimeError(<span class="s">"max_steps exceeded — агент зациклився"</span>)
+
+<span class="c"># 5. Запуск</span>
+<span class="k">if</span> __name__ <span class="k">==</span> <span class="s">"__main__"</span>:
+    answer <span class="k">=</span> run_agent(<span class="s">"What is the weather in Kyiv in Fahrenheit?"</span>)
+    <span class="k">print</span>(<span class="s">f"\nFinal: {answer}"</span>)</pre>
+
+  <p class="lead" style="margin-top:14px">Що показує цей приклад: <b>(1)</b> ReAct — це по суті regex-парсинг тексту LLM, <b>(2)</b> <code>stop=["Observation:"]</code> критично — без нього модель сама вигадує спостереження і виходять галюцинації, <b>(3)</b> кожен tool call — детермінований Python виклик, не "магія агента".</p>
+  <p class="lead"><b>Limitations:</b> цей формат застарів — продакшн-агенти використовують <b>native tool calling API</b> (Claude/GPT-4o), де структура — JSON з боку моделі, не regex. Перейдемо до цього у наступній секції.</p>
 </section>
 
 <!-- ===================== SECTION 4: Tool Calling ===================== -->
@@ -407,10 +477,10 @@ response <span class="k">=</span> client.messages.create(
 <!-- ===================== SECTION 5: Agentic Patterns ===================== -->
 <section id="sec-patterns">
   <h2><span class="num">05.</span> Агентні патерни (Anthropic's Building Effective Agents)</h2>
-  <p class="lead">Anthropic у грудні 2024 опублікувала канонічний guide "Building Effective Agents", де виділила 5 базових патернів. Більшість продакшн-систем — комбінація 2-3 з них. <b>Не все варто будувати як агент</b> — часто простий <i>workflow</i> працює краще.</p>
+  <p class="lead">Anthropic у грудні 2024 випустила "Building Effective Agents" — там 5 патернів, з яких реальні системи зазвичай збирають 2-3. <b>Не все варто будувати як агент</b> — часто простий <i>workflow</i> працює краще.</p>
 
   <div class="demo">
-    <div class="demoHead"><span class="tag">Interactive</span><h4>5 канонічних патернів — клікни щоб переглянути</h4></div>
+    <div class="demoHead"><span class="tag">Interactive</span><h4>5 базових патернів — клікни щоб переглянути</h4></div>
     <div class="patternSel" id="patternSel">
       <button class="on" data-p="chain">1. Prompt Chaining</button>
       <button data-p="route">2. Routing</button>
@@ -506,7 +576,7 @@ result <span class="k">=</span> app.invoke({<span class="s">"query"</span>: <spa
 <!-- ===================== SECTION 7: Other frameworks ===================== -->
 <section id="sec-frameworks">
   <h2><span class="num">07.</span> Інші фреймворки — OpenAI Agents SDK, CrewAI, AutoGen, n8n</h2>
-  <p class="lead">LangGraph — не єдиний варіант. У 2024-2025 з'явилася ціла екосистема фреймворків з різною філософією: від низькорівневих SDK до no-code візуальних редакторів та research-орієнтованих multi-agent систем. Вибір залежить від <b>хто буде підтримувати агента</b>, наскільки складна логіка, і чи треба self-host.</p>
+  <p class="lead">LangGraph — не єдиний варіант. У 2024-2025 фреймворків стало багато — від тонких SDK до no-code візуальних редакторів і multi-agent тулзи для research. Вибір залежить від <b>хто буде підтримувати агента</b>, наскільки складна логіка, і чи треба self-host.</p>
 
   <h3>Порівняння — коли який фреймворк брати</h3>
   <table>
@@ -657,7 +727,7 @@ team <span class="k">=</span> RoundRobinGroupChat(
   <p class="lead"><b>Коли AutoGen виграє у CrewAI:</b> треба conversation loop між агентами (не просто послідовні tasks), code execution sandbox, або research-стиль експерименти з різними patterns. <b>Коли програє:</b> production система з SLA — async core складніший в дебагу, observability слабша, і "чат" як абстракція додає overhead якщо тобі насправді треба simple pipeline.</p>
 
   <h3>n8n — agentic workflow без коду</h3>
-  <p class="lead">n8n — open-source <b>visual workflow editor</b> (як Zapier/Make), але self-host і з power-user функціями. У 2024 додали AI Agent node на базі LangChain. Композиція drag-and-drop: HTTP trigger → Memory node → Agent node з tools → Output.</p>
+  <p class="lead">n8n — open-source <b>visual workflow editor</b> (як Zapier/Make), але self-host і з більшим контролем над workflow. У 2024 додали AI Agent node на базі LangChain. Композиція drag-and-drop: HTTP trigger → Memory node → Agent node з tools → Output.</p>
 
   <div class="grid3">
     <div class="card"><h4>Чому n8n у lecture про агентів</h4><p>Багато бізнес-задач не потребують Python — admin/ops роблять автоматизацію самі через UI. n8n — найпопулярніший варіант коли агент має жити поряд з 400+ інтеграціями (Slack, Notion, GSheets, Jira).</p></div>
@@ -684,9 +754,92 @@ team <span class="k">=</span> RoundRobinGroupChat(
   <p class="lead" style="margin-top:18px"><b>Anti-pattern:</b> брати multi-agent фреймворк (CrewAI/AutoGen) для задачі що розв'язується одним агентом з 3 tools. <i>"Multi-agent overhead"</i> — context-passing між агентами часто з'їдає 30-50% токенів. Спочатку single-agent baseline, потім — якщо реально треба — multi-agent.</p>
 </section>
 
-<!-- ===================== SECTION 8: Memory ===================== -->
+<!-- ===================== SECTION 8: Deep Agents ===================== -->
+<section id="sec-deepagents">
+  <h2><span class="num">08.</span> Deep Agents — agent harness для складних multi-step задач</h2>
+  <p class="lead"><b>Deep Agents</b> від LangChain — це готовий "набір агента з коробки". Той самий tool-calling loop, але вже вшиті <b>планування</b>, <b>файли для контексту</b>, <b>subagents</b> і <b>пам'ять</b>. Ідея проста: складні задачі (research, coding) ламаються не через слабку модель, а через те що агент губиться у своїх же думках і tool-результатах. Бібліотека <code>deepagents</code> — окремий пакет, всередині LangChain і LangGraph.</p>
+
+  <h3>Що таке "agent harness" і чим відрізняється від фреймворку</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>Framework (LangChain, CrewAI)</h4>
+      <p>Дає <b>будівельні блоки</b>: tools, prompts, chains. Ти сам збираєш агента — пишеш loop, обираєш tools, продумуєш context management. Гнучко, але багато boilerplate.</p>
+    </div>
+    <div class="card">
+      <h4>Agent harness (Deep Agents, Claude Agent SDK)</h4>
+      <p>Готова <b>опінійована конструкція</b> з вбудованими tools (todos, файли, subagents) і system prompts, що навчають модель правильно ними користуватися. Запускаєш — і агент уже вміє планувати і керувати контекстом.</p>
+    </div>
+  </div>
+
+  <h3>Core capabilities — що Deep Agents додає поверх звичайного агента</h3>
+  <div class="grid3">
+    <div class="card"><h4>📋 Planning (write_todos)</h4><p>Вбудований tool для декомпозиції складних задач у список TODO. Агент сам розбиває "побудуй CRM dashboard" на 8 кроків і трекає прогрес.</p></div>
+    <div class="card"><h4>📁 Virtual filesystem</h4><p>Tools <code>ls</code>, <code>read_file</code>, <code>write_file</code>, <code>edit_file</code> дозволяють <b>офлоадити великий контекст</b> з messages у файли. Tool result не з'їдає вікно.</p></div>
+    <div class="card"><h4>👥 Subagents (task tool)</h4><p>Спавн ізольованих subagents для специфічних підзадач. Контекст головного агента залишається чистим — subagent повертає лише результат.</p></div>
+    <div class="card"><h4>💾 Long-term memory</h4><p>Persistent memory між threads через LangGraph Memory Store. Агент пам'ятає попередні розмови з користувачем.</p></div>
+    <div class="card"><h4>🔌 Pluggable backends</h4><p>Filesystem swap-able: in-memory, local disk, LangGraph store, sandboxes (Modal/Daytona/Deno) для безпечного code execution. Або власний backend.</p></div>
+    <div class="card"><h4>🔒 Permissions + HITL</h4><p>Декларативні permission rules — які файли можна читати/писати. Human-in-the-loop approval для sensitive операцій через LangGraph interrupts.</p></div>
+    <div class="card"><h4>🖥️ Shell execution</h4><p>З sandbox backend агент отримує <code>execute</code> tool — запуск тестів, build, git, system tasks в ізольованому середовищі.</p></div>
+    <div class="card"><h4>🧩 Skills</h4><p>Reusable workflows і domain knowledge — як розширення агента специфічними процедурами без зміни core коду.</p></div>
+    <div class="card"><h4>✂️ Auto-summarization</h4><p>Старі повідомлення стискаються коли вікно росте. Агент залишається ефективним у довгих сесіях без overflow.</p></div>
+  </div>
+
+  <h3>Quickstart — створити Deep Agent за 5 рядків</h3>
+<pre><span class="c"># pip install -qU deepagents langchain-anthropic</span>
+<span class="k">from</span> deepagents <span class="k">import</span> create_deep_agent
+
+<span class="k">def</span> <span class="f">get_weather</span>(city: <span class="n">str</span>) <span class="k">-&gt;</span> <span class="n">str</span>:
+    <span class="s">"""Get weather for a given city."""</span>
+    <span class="k">return</span> <span class="s">f"It's always sunny in {city}!"</span>
+
+agent <span class="k">=</span> create_deep_agent(
+    model=<span class="s">"anthropic:claude-sonnet-4-6"</span>,
+    tools=[get_weather],
+    system_prompt=<span class="s">"You are a helpful assistant"</span>,
+)
+
+<span class="c"># Агент вже вміє планувати, користуватись filesystem, спавнити subagents</span>
+agent.invoke(
+    {<span class="s">"messages"</span>: [{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"what is the weather in sf"</span>}]}
+)</pre>
+
+  <p class="lead">Підтримуються провайдери: <b>Anthropic, OpenAI, Google Gemini, OpenRouter, Fireworks, Baseten, Ollama</b> — модель задається рядком <code>"provider:model_id"</code>.</p>
+
+  <h3>Коли брати Deep Agents</h3>
+  <table>
+    <thead><tr><th>Сценарій</th><th>Чому Deep Agents</th></tr></thead>
+    <tbody>
+      <tr><td>Multi-step research з web search → analysis → report</td><td>Планування + filesystem для проміжних артефактів + subagents для глибоких рисьорчів</td></tr>
+      <tr><td>Coding agent що читає, пише, тестує файли</td><td>Sandbox backend з <code>execute</code> tool + filesystem permissions</td></tr>
+      <tr><td>Long-running agent з пам'яттю про користувача</td><td>LangGraph Memory Store з коробки, persistent across threads</td></tr>
+      <tr><td>Агент з 10+ tools і змінною кількістю кроків</td><td>Auto-summarization не дає контексту overflow-нути</td></tr>
+      <tr><td>Production з HITL approval</td><td>Built-in interrupts для sensitive tool calls</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Коли НЕ брати Deep Agents</h3>
+  <div class="grid3">
+    <div class="card"><h4>Single-shot агент з 2-3 tools</h4><p>Overhead opinionated harness не виправдовує себе — простіше <code>create_agent</code> з LangChain або custom loop.</p></div>
+    <div class="card"><h4>Простий routing/classification</h4><p>Не треба планування і filesystem — звичайний LangGraph workflow буде легший.</p></div>
+    <div class="card"><h4>Multi-agent crew з ролями</h4><p>Якщо парадигма "team з ролями і task-ами" — CrewAI ближча по абстракції, ніж harness з subagents.</p></div>
+  </div>
+
+  <h3>Deep Agents vs Claude Agent SDK</h3>
+  <p class="lead">Обидва — <b>agent harnesses</b> з тією ж філософією (планування + файли + subagents + skills). Різниця: <b>Claude Agent SDK</b> — від Anthropic, оптимізований під Claude, частина екосистеми Claude Code; <b>Deep Agents</b> — provider-agnostic, побудований на LangChain/LangGraph, краще інтегрується якщо вже маєш LangSmith tracing і хочеш swapability моделей. Архітектурно дуже схожі — обирай за тим, який стек уже в команді.</p>
+
+  <h3>Документація і ресурси</h3>
+  <div class="grid3">
+    <div class="card"><h4>Documentation Index</h4><p>Повний індекс документації LangChain: <code>https://docs.langchain.com/llms.txt</code> — використовуй для навігації по доступних сторінках.</p></div>
+    <div class="card"><h4>PyPI пакет</h4><p><code>pip install deepagents</code> — standalone бібліотека, не вимагає повного LangChain stack.</p></div>
+    <div class="card"><h4>Repo</h4><p><code>github.com/langchain-ai/deepagents</code> — SDK + CLI (terminal coding agent) + ACP integration для Zed/інших редакторів.</p></div>
+  </div>
+
+  <p class="lead" style="margin-top:18px"><b>TL;DR:</b> Deep Agents — це "batteries-included" опінійований harness для випадків, де агент має <i>планувати, керувати великим контекстом і делегувати підзадачі</i>. Якщо твій агент робить research, coding або deep analysis з 5+ кроками — починай звідси, а не зі збирання loop вручну.</p>
+</section>
+
+<!-- ===================== SECTION 9: Memory ===================== -->
 <section id="sec-memory">
-  <h2><span class="num">08.</span> Memory & State Management</h2>
+  <h2><span class="num">09.</span> Memory & State Management</h2>
   <p class="lead">Агент без пам'яті — це Memento. Йому треба зберігати: <b>conversation history</b>, <b>scratchpad</b> (intermediate thoughts), <b>tool results</b>, і часто <b>long-term knowledge</b> (попередні розмови з цим юзером).</p>
 
   <h3>Типи пам'яті в агентах</h3>
@@ -712,9 +865,9 @@ team <span class="k">=</span> RoundRobinGroupChat(
   </div>
 </section>
 
-<!-- ===================== SECTION 8: Metrics ===================== -->
+<!-- ===================== SECTION 10: Metrics ===================== -->
 <section id="sec-metrics">
-  <h2><span class="num">09.</span> Метрики агентів — як виміряти що працює</h2>
+  <h2><span class="num">10.</span> Метрики агентів — як виміряти що працює</h2>
   <p class="lead">Звичайний LLM міряєш latency і accuracy. Агент — складніше. Багато викликів LLM, багато tool calls, multi-step trajectories. Метрики мають охоплювати <b>якість</b>, <b>ефективність</b> і <b>надійність</b>.</p>
 
   <h3>Live dashboard — типові метрики продакшн-агента</h3>
@@ -794,10 +947,10 @@ team <span class="k">=</span> RoundRobinGroupChat(
   </div>
 </section>
 
-<!-- ===================== SECTION 9: Pitfalls ===================== -->
+<!-- ===================== SECTION 11: Pitfalls ===================== -->
 <section id="sec-pitfalls">
-  <h2><span class="num">10.</span> Pitfalls — що часто ламається в агентах</h2>
-  <p class="lead">Агенти — найскладніша частина AI-engineering. Помилки тут не "крашать сервер" — вони "втрачають $200 за ніч" або "відповідають неправильно але впевнено". Ось 8 типових pitfalls.</p>
+  <h2><span class="num">11.</span> Pitfalls — що часто ламається в агентах</h2>
+  <p class="lead">Агенти — це місце де AI-engineering ламається найчастіше. Помилки тут не "крашать сервер" — вони "втрачають $200 за ніч" або "відповідають неправильно але впевнено". Ось 8 типових pitfalls.</p>
 
   <div class="grid2">
     <div class="card"><h4><span class="sev crit">crit</span>Loops without exit</h4><p>Агент повторює одну дію 30 разів. Завжди ставити <code>max_iters</code> і <code>cost_budget</code>. Слідкувати за повторами.</p></div>
@@ -934,7 +1087,7 @@ const PATTERNS = {
     desc: "Запит розбивається на independent subtasks → виконуються паралельно → results об'єднуються.",
     flow: ["Split task", "Run N LLMs concurrently", "Aggregate results"],
     use: ["Sectioning (різні моделі на різні аспекти)", "Voting (3 LLMs голосують для accuracy)", "Multi-aspect review (security, perf, style)"],
-    note: "Швидко (parallel) і robust (можна voting). Дорожче за один виклик."
+    note: "Швидко (parallel), точніше через voting. Дорожче за один виклик."
   },
   orchestrator: {
     name: "Orchestrator-Workers",
