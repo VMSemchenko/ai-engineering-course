@@ -179,6 +179,7 @@
   <a href="#sec-tools">Tool calling</a>
   <a href="#sec-patterns">Агентні патерни</a>
   <a href="#sec-langgraph">LangGraph</a>
+  <a href="#sec-frameworks">Інші фреймворки</a>
   <a href="#sec-memory">Memory & State</a>
   <a href="#sec-metrics">Метрики</a>
   <a href="#sec-pitfalls">Pitfalls</a>
@@ -502,9 +503,190 @@ app <span class="k">=</span> graph.compile()
 result <span class="k">=</span> app.invoke({<span class="s">"query"</span>: <span class="s">"My card was charged twice"</span>})</pre>
 </section>
 
-<!-- ===================== SECTION 7: Memory ===================== -->
+<!-- ===================== SECTION 7: Other frameworks ===================== -->
+<section id="sec-frameworks">
+  <h2><span class="num">07.</span> Інші фреймворки — OpenAI Agents SDK, CrewAI, AutoGen, n8n</h2>
+  <p class="lead">LangGraph — не єдиний варіант. У 2024-2025 з'явилася ціла екосистема фреймворків з різною філософією: від низькорівневих SDK до no-code візуальних редакторів та research-орієнтованих multi-agent систем. Вибір залежить від <b>хто буде підтримувати агента</b>, наскільки складна логіка, і чи треба self-host.</p>
+
+  <h3>Порівняння — коли який фреймворк брати</h3>
+  <table>
+    <thead>
+      <tr><th>Фреймворк</th><th>Філософія</th><th>Цільова аудиторія</th><th>Сильні сторони</th><th>Коли НЕ брати</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>LangGraph</b></td>
+        <td>Граф з explicit state/edges</td>
+        <td>Python інженери</td>
+        <td>Контроль, debuggability, native LangSmith, human-in-the-loop</td>
+        <td>Простий single-agent — overkill</td>
+      </tr>
+      <tr>
+        <td><b>OpenAI Agents SDK</b></td>
+        <td>Lightweight Python SDK з handoffs між агентами</td>
+        <td>Python інженери, OpenAI ecosystem</td>
+        <td>Мінімум boilerplate, agent-to-agent handoffs, guardrails з коробки</td>
+        <td>Не-OpenAI стек, складна state machine</td>
+      </tr>
+      <tr>
+        <td><b>CrewAI</b></td>
+        <td>Role-based "crews" — агенти з ролями і задачами</td>
+        <td>Швидкі прототипи, продуктові команди</td>
+        <td>High-level абстракція (Agent + Task + Crew), швидкий старт</td>
+        <td>Custom routing logic, low-level control</td>
+      </tr>
+      <tr>
+        <td><b>AutoGen</b></td>
+        <td>Conversational multi-agent (Microsoft Research)</td>
+        <td>Research, складні дослідницькі задачі</td>
+        <td>Agent-to-agent dialogues, code execution з коробки, GroupChat</td>
+        <td>Production з SLA — async event-driven core складніший за CrewAI</td>
+      </tr>
+      <tr>
+        <td><b>n8n</b></td>
+        <td>Visual workflow editor (no-code) з AI nodes</td>
+        <td>Не-інженери, ops/business, automation</td>
+        <td>Drag-and-drop, 400+ інтеграцій, self-host, можна не писати код</td>
+        <td>Складна агентна логіка, custom evaluators</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>OpenAI Agents SDK — мінімалістичний приклад</h3>
+  <p class="lead">Вийшов у березні 2025 як спадкоємець експериментального Swarm. Філософія: агент = LLM + tools + instructions, multi-agent — через <b>handoffs</b> (агент передає управління іншому як tool call).</p>
+<pre><span class="k">from</span> agents <span class="k">import</span> Agent, Runner, function_tool
+
+<span class="c"># Tools — звичайні Python функції з декоратором</span>
+<span class="k">@</span>function_tool
+<span class="k">def</span> <span class="f">query_transactions</span>(category: <span class="n">str</span>, days: <span class="n">int</span>) <span class="k">-&gt;</span> <span class="n">str</span>:
+    <span class="k">return</span> db.query(category, days)
+
+<span class="c"># Спеціалізовані агенти</span>
+analyst <span class="k">=</span> Agent(
+    name=<span class="s">"Analyst"</span>,
+    instructions=<span class="s">"Аналізуй транзакції користувача. Числа — з даних, не вигадуй."</span>,
+    tools=[query_transactions],
+    model=<span class="s">"gpt-4o"</span>,
+)
+
+educator <span class="k">=</span> Agent(
+    name=<span class="s">"Educator"</span>,
+    instructions=<span class="s">"Пояснюй фінансові терміни простими словами."</span>,
+    model=<span class="s">"gpt-4o-mini"</span>,
+)
+
+<span class="c"># Coordinator з handoffs — передає управління спец-агенту</span>
+coordinator <span class="k">=</span> Agent(
+    name=<span class="s">"Coordinator"</span>,
+    instructions=<span class="s">"Якщо запит про статистику — handoff до Analyst. Якщо про термін — до Educator."</span>,
+    handoffs=[analyst, educator],
+)
+
+result <span class="k">=</span> Runner.run_sync(coordinator, <span class="s">"скільки витратив на каву минулого тижня?"</span>)
+<span class="k">print</span>(result.final_output)</pre>
+
+  <h3>CrewAI — role-based crew</h3>
+  <p class="lead">Найпопулярніший high-level фреймворк для multi-agent у 2024-2025. Парадигма: ти описуєш <b>агентів з ролями</b> (як співробітників), кожен має goal і backstory, а потім складаєш з них <b>Crew</b> з задачами.</p>
+<pre><span class="k">from</span> crewai <span class="k">import</span> Agent, Task, Crew, Process
+
+analyst <span class="k">=</span> Agent(
+    role=<span class="s">"Financial Analyst"</span>,
+    goal=<span class="s">"Знайти топ статті витрат і impulse spending"</span>,
+    backstory=<span class="s">"Ти 10 років працюєш з персональними фінансами"</span>,
+    tools=[query_transactions_tool, categorize_tool],
+    llm=<span class="s">"gpt-4o"</span>,
+)
+
+advisor <span class="k">=</span> Agent(
+    role=<span class="s">"Money Coach"</span>,
+    goal=<span class="s">"Дати 3 actionable поради на основі аналізу"</span>,
+    backstory=<span class="s">"Ти емпатичний, без менторства, поради конкретні з числами"</span>,
+    llm=<span class="s">"claude-sonnet-4"</span>,
+)
+
+analyze_task <span class="k">=</span> Task(
+    description=<span class="s">"Проаналізуй транзакції за {period} і знайди де можна зекономити"</span>,
+    agent=analyst,
+    expected_output=<span class="s">"Список топ-5 категорій з amounts і паттернами"</span>,
+)
+
+advise_task <span class="k">=</span> Task(
+    description=<span class="s">"На основі аналізу дай 3 поради як зекономити ${target}"</span>,
+    agent=advisor,
+    expected_output=<span class="s">"3 actionable поради з числами"</span>,
+    context=[analyze_task],  <span class="c"># отримує output попередньої таски</span>
+)
+
+crew <span class="k">=</span> Crew(
+    agents=[analyst, advisor],
+    tasks=[analyze_task, advise_task],
+    process=Process.sequential,  <span class="c"># або Process.hierarchical з manager_llm</span>
+)
+result <span class="k">=</span> crew.kickoff(inputs={<span class="s">"period"</span>: <span class="s">"last 3 months"</span>, <span class="s">"target"</span>: 200})</pre>
+
+  <h3>AutoGen — multi-agent conversations</h3>
+  <p class="lead">Від Microsoft Research, оригінально (v0.2) — як conversational multi-agent через двох-сторонні чати, у v0.4 (2025) переписаний на async event-driven core. Сильна сторона — <b>code execution agent</b> з коробки і <b>GroupChat</b>, де декілька агентів спілкуються між собою з manager-агентом, що обирає наступного speaker-а.</p>
+<pre><span class="k">from</span> autogen_agentchat.agents <span class="k">import</span> AssistantAgent
+<span class="k">from</span> autogen_agentchat.teams <span class="k">import</span> RoundRobinGroupChat
+<span class="k">from</span> autogen_agentchat.conditions <span class="k">import</span> TextMentionTermination
+<span class="k">from</span> autogen_ext.models.openai <span class="k">import</span> OpenAIChatCompletionClient
+
+model <span class="k">=</span> OpenAIChatCompletionClient(model=<span class="s">"gpt-4o"</span>)
+
+analyst <span class="k">=</span> AssistantAgent(
+    <span class="s">"analyst"</span>,
+    model_client=model,
+    tools=[query_transactions],
+    system_message=<span class="s">"Аналізуй транзакції. Числа — з даних, не вигадуй."</span>,
+)
+
+advisor <span class="k">=</span> AssistantAgent(
+    <span class="s">"advisor"</span>,
+    model_client=model,
+    system_message=<span class="s">"Дай 3 actionable поради на основі аналізу. Закінчи фразою TERMINATE."</span>,
+)
+
+<span class="c"># Агенти по черзі спілкуються поки advisor не скаже TERMINATE</span>
+team <span class="k">=</span> RoundRobinGroupChat(
+    [analyst, advisor],
+    termination_condition=TextMentionTermination(<span class="s">"TERMINATE"</span>),
+)
+
+<span class="k">await</span> team.run(task=<span class="s">"де можу зекономити $200 цього місяця?"</span>)</pre>
+
+  <p class="lead"><b>Коли AutoGen виграє у CrewAI:</b> треба conversation loop між агентами (не просто послідовні tasks), code execution sandbox, або research-стиль експерименти з різними patterns. <b>Коли програє:</b> production система з SLA — async core складніший в дебагу, observability слабша, і "чат" як абстракція додає overhead якщо тобі насправді треба simple pipeline.</p>
+
+  <h3>n8n — agentic workflow без коду</h3>
+  <p class="lead">n8n — open-source <b>visual workflow editor</b> (як Zapier/Make), але self-host і з power-user функціями. У 2024 додали AI Agent node на базі LangChain. Композиція drag-and-drop: HTTP trigger → Memory node → Agent node з tools → Output.</p>
+
+  <div class="grid3">
+    <div class="card"><h4>Чому n8n у lecture про агентів</h4><p>Багато бізнес-задач не потребують Python — admin/ops роблять автоматизацію самі через UI. n8n — найпопулярніший варіант коли агент має жити поряд з 400+ інтеграціями (Slack, Notion, GSheets, Jira).</p></div>
+    <div class="card"><h4>Структура AI Agent node</h4><p>Memory (Redis/Postgres/Window Buffer) + Chat Model (OpenAI/Anthropic/local) + Tools (HTTP, code, sub-workflows, vector store). Все вибирається з dropdown.</p></div>
+    <div class="card"><h4>Self-host first</h4><p>Безкоштовно self-hosted, є cloud за фіксовану ціну. На відміну від Zapier — workflow можна version control (export як JSON), писати custom code nodes, deploy у власну infra.</p></div>
+    <div class="card"><h4>Обмеження для складних агентів</h4><p>Custom routing з conditional edges — через Switch nodes (не граф). Multi-agent crew — складніше ніж у CrewAI. Eval і observability — слабші ніж у LangSmith.</p></div>
+    <div class="card"><h4>Sweet spot</h4><p>"Підключи AI до 5 систем і автоматизуй task X" — n8n. "Multi-agent reasoning з 4 ролями і memory compression" — Python фреймворк.</p></div>
+    <div class="card"><h4>Коли вибрати n8n у компанії</h4><p>Команда не має сильного Python-розробника, але треба швидко інтегрувати LLM у внутрішні процеси. Або product-owner хоче сам редагувати агента без релізу.</p></div>
+  </div>
+
+  <h3>Як обирати в реальному проєкті</h3>
+  <table>
+    <thead><tr><th>Ситуація</th><th>Що брати</th><th>Чому</th></tr></thead>
+    <tbody>
+      <tr><td>Single-agent з 2-3 tools, OpenAI стек</td><td>OpenAI Agents SDK</td><td>Менше boilerplate, native handoffs</td></tr>
+      <tr><td>Multi-agent crew (3-5 ролей), швидкий MVP</td><td>CrewAI</td><td>High-level абстракція, role-first дизайн</td></tr>
+      <tr><td>Research, conversational multi-agent з code execution</td><td>AutoGen</td><td>GroupChat, code executor agent, гнучкі patterns</td></tr>
+      <tr><td>Складна state machine, human-in-the-loop, production</td><td>LangGraph</td><td>Граф, checkpointing, native LangSmith</td></tr>
+      <tr><td>Інтеграція з 5+ SaaS, ops/business team</td><td>n8n</td><td>Visual editor, 400+ інтеграцій, self-host</td></tr>
+      <tr><td>Дослідження, кастомний дизайн</td><td>Plain SDK + tool_use loop</td><td>Нуль залежностей, повний контроль</td></tr>
+    </tbody>
+  </table>
+
+  <p class="lead" style="margin-top:18px"><b>Anti-pattern:</b> брати multi-agent фреймворк (CrewAI/AutoGen) для задачі що розв'язується одним агентом з 3 tools. <i>"Multi-agent overhead"</i> — context-passing між агентами часто з'їдає 30-50% токенів. Спочатку single-agent baseline, потім — якщо реально треба — multi-agent.</p>
+</section>
+
+<!-- ===================== SECTION 8: Memory ===================== -->
 <section id="sec-memory">
-  <h2><span class="num">07.</span> Memory & State Management</h2>
+  <h2><span class="num">08.</span> Memory & State Management</h2>
   <p class="lead">Агент без пам'яті — це Memento. Йому треба зберігати: <b>conversation history</b>, <b>scratchpad</b> (intermediate thoughts), <b>tool results</b>, і часто <b>long-term knowledge</b> (попередні розмови з цим юзером).</p>
 
   <h3>Типи пам'яті в агентах</h3>
@@ -532,7 +714,7 @@ result <span class="k">=</span> app.invoke({<span class="s">"query"</span>: <spa
 
 <!-- ===================== SECTION 8: Metrics ===================== -->
 <section id="sec-metrics">
-  <h2><span class="num">08.</span> Метрики агентів — як виміряти що працює</h2>
+  <h2><span class="num">09.</span> Метрики агентів — як виміряти що працює</h2>
   <p class="lead">Звичайний LLM міряєш latency і accuracy. Агент — складніше. Багато викликів LLM, багато tool calls, multi-step trajectories. Метрики мають охоплювати <b>якість</b>, <b>ефективність</b> і <b>надійність</b>.</p>
 
   <h3>Live dashboard — типові метрики продакшн-агента</h3>
@@ -614,7 +796,7 @@ result <span class="k">=</span> app.invoke({<span class="s">"query"</span>: <spa
 
 <!-- ===================== SECTION 9: Pitfalls ===================== -->
 <section id="sec-pitfalls">
-  <h2><span class="num">09.</span> Pitfalls — що часто ламається в агентах</h2>
+  <h2><span class="num">10.</span> Pitfalls — що часто ламається в агентах</h2>
   <p class="lead">Агенти — найскладніша частина AI-engineering. Помилки тут не "крашать сервер" — вони "втрачають $200 за ніч" або "відповідають неправильно але впевнено". Ось 8 типових pitfalls.</p>
 
   <div class="grid2">
