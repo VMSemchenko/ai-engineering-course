@@ -1,0 +1,7 @@
+dataset,provider,json_valid,tasks_found,hallucinations,tokens_input,tokens_output,tokens_total,cost,latency
+simple,ollama (mistral),✅,3,— (manual check),196,162,358,$0.0,60.35s
+simple,zai (glm-4.5),✅,3,— (manual check),196,111,307,$0.000307,143.55s
+chaotic,ollama (mistral),✅,3,— (manual check),356,133,489,$0.0,12.92s
+chaotic,zai (glm-4.5),✅,4,— (manual check),356,133,489,$0.000489,15.45s
+technical,ollama (mistral),✅,5,— (manual check),414,175,589,$0.0,16.68s
+technical,zai,❌ ERROR,0,—,0,0,0,$0,—
