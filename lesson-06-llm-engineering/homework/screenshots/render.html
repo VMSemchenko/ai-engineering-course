@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body { background: #1e1e2e; margin: 0; padding: 20px; font-family: 'Menlo', 'Monaco', monospace; }
+.terminal { background: #0d1117; border-radius: 10px; padding: 0; margin: 20px auto; max-width: 900px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+.terminal-bar { background: #161b22; border-radius: 10px 10px 0 0; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+.terminal-title { color: #8b949e; font-size: 13px; margin-left: 12px; }
+.terminal-body { padding: 16px 20px; color: #c9d1d9; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+.prompt { color: #7ee787; } .cmd { color: #79c0ff; } .ok { color: #3fb950; } .err { color: #f85149; }
+.dim { color: #8b949e; } .bold { color: #f0f6fc; font-weight: bold; }
+h2 { color: #c9d1d9; text-align: center; font-family: sans-serif; margin: 40px 0 0; }
+</style></head><body>
+
+<!-- SETUP -->
+<div id="setup">
+<h2>1. Setup — Ollama Server</h2>
+<div class="terminal">
+<div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">Terminal — zsh</span></div>
+<div class="terminal-body"><span class="prompt">$ </span><span class="cmd">ollama --version</span>
+ollama version is 0.23.2
+
+<span class="prompt">$ </span><span class="cmd">ollama list</span>
+NAME              ID              SIZE      MODIFIED
+llama2:latest     78e26419b446    3.8 GB    1 hour ago
+mistral:latest    6577803aa9a0    4.4 GB    11 days ago
+
+<span class="prompt">$ </span><span class="cmd">curl -s http://localhost:11434/api/tags | python3 -m json.tool | grep name</span>
+            "name": "llama2:latest",
+            "name": "mistral:latest",
+
+<span class="ok">✅ Ollama server running on http://localhost:11434</span></div></div></div>
+
+<!-- SIMPLE OLLAMA -->
+<div id="simple_ollama">
+<h2>2. Simple Meeting — Ollama (Mistral 7B)</h2>
+<div class="terminal">
+<div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">Terminal — extraction_agent.py</span></div>
+<div class="terminal-body"><span class="prompt">$ </span><span class="cmd">python extraction_agent.py samples/simple_meeting.txt ollama</span>
+🤖  Testing OLLAMA (mistral)...
+📄 Input: samples/simple_meeting.txt (840 chars)
+
+JSON: <span class="ok">✅ Valid</span> | Latency: 7.61s | Tokens: 326
+
+{
+  <span class="bold">"summary"</span>: "На зустрічі обговорювалися пріоритетні задачі для цього спринту.",
+  <span class="bold">"tasks"</span>: [
+    {"owner": "Іван", "task": "Create UI design in Figma", "deadline": "16 травня"},
+    {"owner": "Мартін", "task": "Write REST API for sales data", "deadline": "16 травня"},
+    {"owner": "Олена", "task": "Write tests for the API", "deadline": "18 травня"}
+  ],
+  <span class="bold">"decisions"</span>: [
+    "Use React for frontend part of dashboard",
+    "Code review is mandatory before merge to main"
+  ]
+}</div></div></div>
+
+<!-- SIMPLE ZAI -->
+<div id="simple_zai">
+<h2>3. Simple Meeting — Z.ai (GLM-4.5)</h2>
+<div class="terminal">
+<div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">Terminal — extraction_agent.py</span></div>
+<div class="terminal-body"><span class="prompt">$ </span><span class="cmd">python extraction_agent.py samples/simple_meeting.txt zai</span>
+☁️  Testing ZAI (glm-4.5)...
+📄 Input: samples/simple_meeting.txt (840 chars)
+
+JSON: <span class="ok">✅ Valid</span> | Latency: 15.29s | Tokens: 306
+
+{
+  <span class="bold">"summary"</span>: "На щотижневій зустрічі обговорили створення нового дашборду для аналітики продажів.",
+  <span class="bold">"tasks"</span>: [
+    {"owner": "Іван", "task": "Зробити дизайн UI для дашборду, прототип у Figma", "deadline": "16 травня"},
+    {"owner": "Мартін", "task": "Написати REST API для отримання даних продажів", "deadline": "16 травня"},
+    {"owner": "Олена", "task": "Написати тести для API", "deadline": "18 травня"}
+  ],
+  <span class="bold">"decisions"</span>: [
+    "Використовувати React для frontend частини дашборду",
+    "Code review обов'язковий перед кожним merge у main"
+  ]
+}</div></div></div>
+
+<!-- CHAOTIC OLLAMA -->
+<div id="chaotic_ollama">
+<h2>4. Chaotic Standup — Ollama (Mistral 7B)</h2>
+<div class="terminal">
+<div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">Terminal — extraction_agent.py</span></div>
+<div class="terminal-body"><span class="prompt">$ </span><span class="cmd">python extraction_agent.py samples/chaotic_standup.txt ollama</span>
+🤖  Testing OLLAMA (mistral)...
+📄 Input: samples/chaotic_standup.txt (1572 chars)
+
+JSON: <span class="ok">✅ Valid</span> | Latency: 13.94s | Tokens: 499
+
+{
+  <span class="bold">"summary"</span>: "Обговорювалися проблеми з авторизацією, міграцією БД та ElasticSearch.",
+  <span class="bold">"tasks"</span>: [
+    {"owner": "Дарина", "task": "Полагодити баг з рефреш токеном", "deadline": "17 травня"},
+    {"owner": "Максим", "task": "Міграція БД (email_verified, last_login_at)", "deadline": "13 травня"},
+    {"owner": "Дарина", "task": "Оновити документацію по API", "deadline": "20 травня"},
+    {"owner": "Женя", "task": "ElasticSearch інтеграція", "deadline": "19 травня"}
+  ],
+  <span class="bold">"decisions"</span>: [
+    "Redis для кешування результатів пошуку",
+    "Тести для кожного нового ендпоінту"
+  ]
+}</div></div></div>
+
+<!-- CHAOTIC ZAI -->
+<div id="chaotic_zai">
+<h2>5. Chaotic Standup — Z.ai (GLM-4.5)</h2>
+<div class="terminal">
+<div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">Terminal — extraction_agent.py</span></div>
+<div class="terminal-body"><span class="prompt">$ </span><span class="cmd">python extraction_agent.py samples/chaotic_standup.txt zai</span>
+☁️  Testing ZAI (glm-4.5)...
+📄 Input: samples/chaotic_standup.txt (1572 chars)
+
+JSON: <span class="ok">✅ Valid</span> | Latency: 15.45s | Tokens: 489
+
+{
+  <span class="bold">"summary"</span>: "Команда обговорила поточні завдання, включаючи виправлення багів та міграцію БД.",
+  <span class="bold">"tasks"</span>: [
+    {"owner": "Дарина", "task": "Виправити баг з рефреш токеном OAuth", "deadline": "17 травня"},
+    {"owner": "Максим", "task": "Міграція БД для нових полів юзера", "deadline": "13 травня"},
+    {"owner": "Дарина", "task": "Оновити документацію по API", "deadline": "20 травня"},
+    {"owner": "Женя", "task": "ElasticSearch інтеграція + переіндексація", "deadline": "19 травня"}
+  ],
+  <span class="bold">"decisions"</span>: [
+    "Redis для кешування результатів пошуку",
+    "Писати тести для кожного ендпоінту",
+    "Петро робить код рев'ю для міграцій"
+  ]
+}</div></div></div>
+
+<!-- EVAL TABLE -->
+<div id="eval_table">
+<h2>6. Evaluation Matrix</h2>
+<div class="terminal">
+<div class="terminal-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="terminal-title">Terminal — eval_results.csv</span></div>
+<div class="terminal-body"><span class="bold">📊 EVALUATION MATRIX</span>
+======================================================================
+Dataset      | Provider                  |  JSON  | Tasks  |  Tokens  |    Cost    | Latency
+---------------------------------------------------------------------------------------------
+simple       | ollama (mistral)          |   <span class="ok">✅</span>    |   3    |   326    |    $0.0    |  7.61s
+simple       | zai (glm-4.5)             |   <span class="ok">✅</span>    |   3    |   306    | $0.000306  |  15.29s
+chaotic      | ollama (mistral)          |   <span class="ok">✅</span>    |   4    |   499    |    $0.0    |  13.94s
+chaotic      | zai (glm-4.5)             |   <span class="ok">✅</span>    |   6    |   501    | $0.000501  |  24.14s
+technical    | ollama (mistral)          |   <span class="ok">✅</span>    |   5    |   589    |    $0.0    |  16.68s
+technical    | zai (glm-4.5)             |   <span class="ok">✅</span>    |   6    |   637    | $0.000637  |  19.7s
+
+<span class="ok">✅ Усі результати збережено у results/</span>
+<span class="ok">✅ Evaluation matrix: eval_results.csv</span></div></div></div>
+
+</body></html>
