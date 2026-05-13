@@ -1,0 +1,27 @@
+======================================================================
+PROOF: Deployment — Public URL Live on Fly.io
+======================================================================
+
+Public URL: https://rag-api-lesson10-hw.fly.dev
+
+--- GET /health ---
+{
+  "status": "ok",
+  "active_streams": 0,
+  "aborted_streams": 0,
+  "concurrency_used": 0,
+  "concurrency_limit": 20,
+  "index_size": 13,
+  "cache_size": 0,
+  "mock_mode": false
+}
+
+--- POST /chat/stream (streaming test) ---
+  Streamed 100 tokens
+  Model: mistralai/mistral-nemo
+  Sources: ['chunk_3', 'chunk_0', 'chunk_5']
+  Latency: 1812ms
+  Cost: $0.000043
+
+✅ API is live and responding on Fly.io!
+📎 https://rag-api-lesson10-hw.fly.dev

@@ -196,7 +196,10 @@ async def stream_with_fallback(
             continue
         except APIStatusError as e:
             if e.status_code in NON_RETRYABLE_CODES:
-                raise  # Don't fallback on client errors
+                # Allow fallback for invalid model IDs (misconfiguration)
+                body_str = str(e.body) if hasattr(e, 'body') else str(e)
+                if "not a valid model" not in body_str:
+                    raise  # Don't fallback on real client errors
             circuit.record_failure()
             last_error = e
             continue

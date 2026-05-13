@@ -1,0 +1,70 @@
+======================================================================
+PROOF 6: Cost Tracking — /usage/today with real data
+======================================================================
+
+GET /usage/today (X-API-Key: demo-key-free, tier: free):
+{
+  "requests": 0,
+  "tokens": 0,
+  "cost_usd": 0.0
+}
+
+GET /usage/today (X-API-Key: demo-key-pro, tier: pro):
+{
+  "requests": 12,
+  "tokens": 22555,
+  "cost_usd": 0.000467
+}
+
+GET /usage/today (X-API-Key: demo-key-enterprise, tier: enterprise):
+{
+  "requests": 4,
+  "tokens": 8460,
+  "cost_usd": 0.001489
+}
+
+GET /usage/breakdown (tier: pro):
+{
+  "by_model": {
+    "mistralai/mistral-nemo": {
+      "requests": 12,
+      "tokens": 22555,
+      "cost_usd": 0.000467,
+      "avg_latency_ms": 7766
+    }
+  },
+  "cache_hit_rate": 0.083,
+  "fallback_rate": 0.083,
+  "avg_latency_ms": 7766,
+  "p95_latency_ms": 22961,
+  "total_requests": 12
+}
+
+GET /usage/breakdown (tier: enterprise):
+{
+  "by_model": {
+    "openai/gpt-4o-mini": {
+      "requests": 4,
+      "tokens": 8460,
+      "cost_usd": 0.001489,
+      "avg_latency_ms": 2520
+    }
+  },
+  "cache_hit_rate": 0.0,
+  "fallback_rate": 0.0,
+  "avg_latency_ms": 2520,
+  "p95_latency_ms": 3473,
+  "total_requests": 4
+}
+
+GET /health:
+{
+  "status": "ok",
+  "active_streams": 0,
+  "aborted_streams": 0,
+  "concurrency_used": 0,
+  "concurrency_limit": 20,
+  "index_size": 13,
+  "cache_size": 1,
+  "mock_mode": false
+}

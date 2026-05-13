@@ -1,0 +1,25 @@
+======================================================================
+PROOF 4: Rate Limit — 429 Too Many Requests + Retry-After
+======================================================================
+
+Tier: demo-free (5,000 tokens/min limit)
+Strategy: Send many parallel requests to overwhelm the token budget
+(pre-check consumes ~500 estimated tokens per request)
+
+  Request #1: HTTP 200
+  Request #2: HTTP 200
+  Request #3: HTTP 200
+  Request #4: HTTP 200
+  Request #5: HTTP 200
+  Request #6: HTTP 429 ⛔ Rate limit exceeded! (Retry-After: 6s)
+  Request #7: HTTP 429 ⛔ Rate limit exceeded! (Retry-After: 6s)
+  Request #8: HTTP 200
+  Request #9: HTTP 429 ⛔ Rate limit exceeded! (Retry-After: 6s)
+  Request #10: HTTP 200
+  Request #11: HTTP 200
+  Request #12: HTTP 429 ⛔ Rate limit exceeded! (Retry-After: 6s)
+  Request #13: HTTP 429 ⛔ Rate limit exceeded! (Retry-After: 6s)
+  Request #14: HTTP 200
+  Request #15: HTTP 200
+
+✅ Rate limiting correctly blocks requests that exceed the token budget!

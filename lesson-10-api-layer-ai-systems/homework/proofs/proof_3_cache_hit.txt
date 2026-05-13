@@ -1,0 +1,26 @@
+======================================================================
+PROOF 3: Semantic Cache — MISS vs HIT latency comparison
+======================================================================
+
+--- Request #1: Cache MISS ---
+Query: "How should twelve-factor apps handle configuration?"
+
+  cache_hit:  False
+  model:      mistralai/mistral-nemo
+  latency_ms: 7471
+  cost_usd:   $0.000044
+
+--- Request #2: Cache HIT (same query) ---
+Query: "How should twelve-factor apps handle configuration?"
+
+  cache_hit:    True
+  cache_score:  1.0
+  model:        mistralai/mistral-nemo
+  latency_ms:   569
+  cost_usd:     $0.000000
+
+--- COMPARISON ---
+  MISS latency: 7471ms
+  HIT latency:  569ms
+  Speedup:      13.1x faster on cache HIT
+  Cost saved:   $0.000044 → $0.000000

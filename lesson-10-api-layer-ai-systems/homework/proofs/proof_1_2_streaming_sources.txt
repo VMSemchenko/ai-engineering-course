@@ -1,0 +1,53 @@
+======================================================================
+PROOF 1: SSE Streaming (tokens arrive one-by-one)
+PROOF 2: RAG response with sources in 'done' event
+======================================================================
+
+$ curl -N -X POST http://localhost:8000/chat/stream \
+    -H "X-API-Key: demo-key-pro" \
+    -H "Content-Type: application/json" \
+    -d '{"message": "What is the twelve-factor app?"}'
+
+data: {"type":"token","content":"The"}
+data: {"type":"token","content":" twelve"}
+data: {"type":"token","content":"-factor"}
+data: {"type":"token","content":" app"}
+data: {"type":"token","content":" is"}
+data: {"type":"token","content":" a"}
+data: {"type":"token","content":" methodology"}
+data: {"type":"token","content":" for"}
+data: {"type":"token","content":" building"}
+data: {"type":"token","content":" software"}
+data: {"type":"token","content":"-as"}
+data: {"type":"token","content":"-a"}
+data: {"type":"token","content":"-service"}
+data: {"type":"token","content":" apps"}
+data: {"type":"token","content":" that"}
+data: {"type":"token","content":" aims"}
+data: {"type":"token","content":" to"}
+data: {"type":"token","content":" achieve"}
+data: {"type":"token","content":" several"}
+data: {"type":"token","content":" goals"}
+... (streaming continues) ...
+
+  ... [97 tokens streamed] ...
+
+FINAL SSE EVENT (done):
+{
+  "type": "done",
+  "usage": {
+    "input_tokens": 1903,
+    "output_tokens": 97
+  },
+  "cost_usd": 4.097e-05,
+  "cache_hit": false,
+  "model": "mistralai/mistral-nemo",
+  "fallback_used": false,
+  "sources": [
+    "chunk_0",
+    "chunk_8",
+    "chunk_4"
+  ],
+  "latency_ms": 4268,
+  "ttft_ms": 3057
+}

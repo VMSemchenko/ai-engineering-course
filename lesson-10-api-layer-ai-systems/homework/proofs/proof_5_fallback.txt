@@ -1,0 +1,59 @@
+======================================================================
+PROOF 5: Multi-Provider Fallback — fallback_used=true
+======================================================================
+
+Test: Primary model set to "openai/this-does-not-exist" (invalid)
+Expected: System auto-falls back to Fallback 1 (mistralai/mistral-nemo)
+
+Fallback chain for demo-pro tier:
+  [0] openai/this-does-not-exist  ← PRIMARY (intentionally broken)
+  [1] mistralai/mistral-nemo       ← FALLBACK 1
+  [2] google/gemma-3-4b-it          ← FALLBACK 2
+
+--- Sending request with broken primary ---
+
+FINAL SSE EVENT (done):
+{
+  "type": "done",
+  "usage": {
+    "input_tokens": 1903,
+    "output_tokens": 88
+  },
+  "cost_usd": 4.07e-05,
+  "cache_hit": false,
+  "model": "mistralai/mistral-nemo",
+  "fallback_used": true,
+  "sources": [
+    "chunk_0",
+    "chunk_8",
+    "chunk_4"
+  ],
+  "latency_ms": 3867,
+  "ttft_ms": 907
+}
+
+  model:         mistralai/mistral-nemo
+  fallback_used: True  ← Primary failed, fallback activated!
+  latency_ms:    3867
+  sources:       ['chunk_0', 'chunk_8', 'chunk_4']
+
+--- GET /usage/breakdown ---
+{
+  "by_model": {
+    "mistralai/mistral-nemo": {
+      "requests": 12,
+      "tokens": 22555,
+      "cost_usd": 0.000467,
+      "avg_latency_ms": 7766
+    }
+  },
+  "cache_hit_rate": 0.083,
+  "fallback_rate": 0.083,
+  "avg_latency_ms": 7766,
+  "p95_latency_ms": 22961,
+  "total_requests": 12
+}
+
+  fallback_rate: 0.083  ← 8% of requests used fallback
+
+✅ Multi-provider fallback works correctly!
