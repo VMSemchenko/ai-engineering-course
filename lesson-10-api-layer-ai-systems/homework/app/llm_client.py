@@ -55,7 +55,7 @@ _client: AsyncOpenAI | None = None
 # Retryable HTTP status codes
 RETRYABLE_CODES = {429, 500, 502, 503, 504}
 NON_RETRYABLE_CODES = {400, 401, 403, 422}
-LLM_TIMEOUT = 15  # seconds
+LLM_TIMEOUT = 45  # seconds (free models can be slow)
 
 
 def get_client() -> AsyncOpenAI:
